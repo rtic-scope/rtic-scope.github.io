@@ -1,0 +1,62 @@
+*NOTE:* The content on this page is a work in progress.
+
+* About
+*RTIC Scope* is a zero-overhead framework for recording and analyzing
+execution traces from RTIC applications on ARM Cortex-M targets.
+
+** Features
+*** Trace
+*** Replay
+
+** Project repositories/crates
+- [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes
+  received =api::EventChunk= structs to stderr with nanosecond timestamp information.
+- [[https://github.com/rtic-scope/cargo-rtic-scope][cargo-rtic-scope]] :: The RTIC Scope backend which builds the target
+  application, recovers trace information, traces the target, replays
+  traces, etc.
+- [[https://github.com/rtic-scope/api][api]] :: The common API used between the RTIC Scope backend and all frontends.
+- [[https://github.com/rtic-scope/examples][examples]] :: A set of example target applications where the RTIC Scope
+  framework is applied. These are documented below in [[Examples]].
+- [[https://github.com/rtic-scope/rtic-trace][rtic-trace]] :: The ~no_std~ crate used to configure the target for
+  tracing purposes.
+- [[https://github.com/rtic-scope/itm-decode][itm-decode]] :: A host-side library that decodes the binary trace stream
+  received from the target to workable Rust structures.
+- [[https://github.com/rtic-scope/rfcs][rfcs]] :: A catch-all meta-repository for discussions that encompasses more than a single repository.
+- [[https://github.com/rtic-scope/rtic-scope.github.io][rtic-scope.github.io]] :: The source code for this page.
+
+
+* Requirements
+** Hardware
+- An embedded system with an ARM Cortex-M MCU and available asyncronous
+  trace pin output.
+- Serial hardware.
+
+** Software
+- A recent Linux-based operating system.
+
+* Getting started
+#+begin_src fundamental
+  $ cargo install cargo-rtic-scope
+  $ cargo install rtic-scope-frontend-dummy
+#+end_src
+
+* Examples
+** blinky
+
+* How it works
+~cargo-rtic-scope~ is abstracted in a single-producer, multiple-consumer fashion, where ...
+the heavy work is done while tracing:
+- build the target application
+- generate task resolve maps from application RTIC =#[app]= declaration
+- reset the target and sample timestamp
+
+* Limitations
+** Target-side overhead
+
+* License
+TBA
+
+* Contact, bug reports and contributions
+Bug reports and contributions are welcome. Please file it under the [[Project repositories/crates][relevant repository]].
+
+Project maintainer can be reached via email at [[mailto:vikson-6@student.ltu.se][<vikson-6@student.ltu.se>]].
