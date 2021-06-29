@@ -1,9 +1,15 @@
-*NOTE:* The content on this page is a work in progress.
+#+TITLE: RTIC Scope
+#+AUTHOR: Viktor Vilhelm Sonesten
+#+EMAIL: vikson-6@student.ltu.se
+
+
+*NOTE:* This document is a work in progress.
+
+-----
 
 * About
 *RTIC Scope* is a zero-overhead framework for recording and analyzing execution traces from [[https://rtic.rs][RTIC applications]] on ARM Cortex-M targets.
-The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined by the Cortex-M4 standard.
-# TODO link to standard.
+The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined by the [[https://developer.arm.com/documentation/ddi0403/ed/][ARMv7-M Architecture Reference Manual]], Appendix D4.
 
 ** Features
 The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~rtic-trace~.
@@ -66,28 +72,93 @@ Assuming Nucleo and hs-probe...
 
 #+end_src
 
-** Applying RTIC Scope on you own project
-   # rephrase this section
-- What must be added?
-- What must be changed?
-
 * How it works
 ** ITM/DWT subsystem
-# summarize the protocol here and what info we get from it
-** Host-side
-~cargo-rtic-scope~ is abstracted in a single-producer, multiple-consumer fashion, where ...
-the heavy work is done while tracing:
-- build the target application
-- generate task resolve maps from application RTIC =#[app]= declaration
-- reset the target and sample timestamp
+Over serial communication a stream of back-to-back ITM packets are received.
+Each packet contains a header and a number of payload bytes.
+Of special interest are exception trace packets:
+#+begin_quote
+The DWT unit can generate an Exception trace packet whenever then processor enters, exits, or returns to an exception.
+--- Appendix D4.3.2
+#+end_quote
+This packet then contains one of the exception numbers listed in the table below.
+In an RTIC application, tasks are bound to these numbers.
+
+#+CAPTION: ARMv7-M Exception numbers
+#+ATTR_HTML: :rules all
+| Exception number | Exception name/label |
+|------------------+----------------------|
+|                1 | Reset                |
+|                2 | NMI                  |
+|                3 | HardFault            |
+|                4 | MemManage            |
+|                5 | BusFault             |
+|             7-10 | Reserved             |
+|               11 | SVCall               |
+|               12 | DebugMonitor         |
+|               13 | Reserved             |
+|               14 | PendSV               |
+|               15 | SysTick              |
+|               16 | External interrupt 0 |
+|                . | .                    |
+|                . | .                    |
+|                . | .                    |
+|           16 + N | External interrupt N |
+|------------------+----------------------|
+
+Henceforth, this document will refer to these exceptions/interrupt numbers as interrupt request (IRQ) numbers.
+
+** Host-side information recovery
+The IRQ numbers we receive in a packet must be associated with the RTIC task that changed execution status.
+This is done in a preparatory step before the target is flashed and traced.
+For example, when executing =cargo rtic-scope --bin blinky --serial /dev/ttyUSB=:
+1. ~blinky~ is build via a regular =cargo build --bin blinky=.
+2. The RTIC application declaration, =#[app(...)] mod app {...}=, is parsed from ~blinky~'s source code.
+   From this declaration, the =#[app(device = ...)]= argument is extracted along with the IRQ label from each =#[task(binds = ...)]= macro occurance.
+   For example, =device = stm32f4::stm32f401=, =binds = SysTick=, and =binds = EXTI1= might be extracted.
+   Here, each IRQ label is associated with the RTIC task it is bound to.
+
+   This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to [[Limitations]].
+3. An adhoc cdylib crate is then built which translates IRQ labels to IRQ numbers.
+   For example, the adhoc crate might contain
+   #+begin_src rust
+     use stm32f4::stm32f401::Interrupt;
+
+     // Only external interrupts need be written here.
+     // Exceptions-bound tasks are resolved using the above table.
+
+     #[no_mangle]
+     pub extern fn rtic_scope_func_EXTI1() -> u8 {
+         Interrupt::EXTI1.nr()
+     }
+   #+end_src
+   After loading the resultant shared library and calling all functions, a ~IRQ number -> IRQ label -> RTIC task~ map ("task map") is yielded.
+4. ~blinky~ is flashed unto the target, and tracing begins after a timestamped reset.
+5. When an ITM packet is received:
+   1. it is first deserialized to a Rust =struct= representation;
+   2. this struct is flushed to file;
+   3. and lastly translated to an =api::EventChunk= by help of the task map and reset timestamp, and forwarded to any configured frontends.
+      This =struct= contains an absolute timestamp and list of events that occured at that time.
 
 * Limitations
+** RTIC application constrains
 ** Target-side overhead
+
+* Frequently asked questions
+- Where are all build artifacts stored? :: Most likely under ~target/~, assuming the current working directory is a crate containing target applications.
+  The target directory can be overridden via =TARGET_DIR= or the =--target-dir= option.
+  Note that the RTIC application will be rebuilt to this location.
+
+  ~cargo rtic-scope~ also respecets [[https://doc.rust-lang.org/cargo/reference/config.html][Cargo's configuration system]].
+- Where are all traces saved to? :: Recorded traces are serialized to JSON to ~/path/to/target-dir/rtic-traces~, which means ~target/rtic-traces~ by default.
+  This directory can be overridden via the ~--trace-dir~ option.
+  The same option  is used to replay traces located in non-default location.
+
+  *NOTE:* any traces saved to the target directory will be lost on a =cargo clean=.
 
 * Roadmap
 
 * Publications
-thesis and publication here
 
 * License
 TBA
@@ -96,3 +167,5 @@ TBA
 Bug reports and contributions are welcome. Please file it under the [[Project repositories/crates][relevant repository]].
 
 Project maintainer can be reached via email at [[mailto:vikson-6@student.ltu.se][<vikson-6@student.ltu.se>]].
+
+-----
