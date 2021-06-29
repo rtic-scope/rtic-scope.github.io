@@ -12,7 +12,7 @@
 The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined by the [[https://developer.arm.com/documentation/ddi0403/ed/][ARMv7-M Architecture Reference Manual]], Appendix D4.
 
 ** Features
-The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~rtic-trace~.
+The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~cortex-m-rtic-trace~.
 
 - The backend :: is a host-side (i.e., the system that programs the target device) application which exposes two operations:
   - Tracing :: where the execution trace is captured from the target via a serial device and saved to file.
@@ -28,14 +28,14 @@ The framework is split into three chief components: the canonical backend, the f
   This is subject to change following a post-v1.0.0 release.
   With bidirectional communication, a frontend can for example apply a complex hardware-in-the-loop testing suite.
   Please refer to the [[Roadmap][project roadmap]].
-- The target-side tracing crate :: ~rtic-trace~, is an small auxiliary crate applied to the target application under trace.
+- The target-side tracing crate :: ~cortex-m-rtic-trace~, is an small auxiliary crate applied to the target application under trace.
   It exposes:
   - the ~setup~ module :: which is used in the RTIC =#[init]= function.
     It ensures that the target is properly configured to yield trace information to the host system after =#[init]= is exited.
   - the =#[trace]= macro :: which is used to trace RTIC software tasks.
     While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing a single =u32= variable.
 
-  The aim of ~rtic-trace~ (and RTIC Scope as a whole) is to require minimal boilerplate to your RTIC applications.
+  The aim of ~cortex-m-rtic-trace~ (and RTIC Scope as a whole) is to require minimal boilerplate to your RTIC applications.
 
 ** Project repositories/crates
 The framework is managed under the [[https://github.com/rtic-scope][RTIC Scope organization on GitHub]].
@@ -43,7 +43,7 @@ Below is a list of the chief repositories that constitute the project.
 Any other crates listed under the organization but not here are branches of other repositories pending upstream merge.
 
 - [[https://github.com/rtic-scope/cargo-rtic-scope][cargo-rtic-scope]] :: The RTIC Scope backend which builds the target application, recovers trace information, traces the target, replays traces, etc.
-- [[https://github.com/rtic-scope/rtic-trace][rtic-trace]] :: The ~no_std~ crate used to configure the target for tracing purposes.
+- [[https://github.com/rtic-scope/cortex-m-rtic-trace][cortex-m-rtic-trace]] :: The ~no_std~ crate used to configure the target for tracing purposes.
 - [[https://github.com/rtic-scope/examples][examples]] :: A set of example target applications where the RTIC Scope framework is applied. These are also [[Examples][documented below]].
 - [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes received =api::EventChunk= structs to stderr with nanosecond timestamp information.
 - [[https://github.com/rtic-scope/api][api]] :: The common API used between the RTIC Scope backend and all frontends.
