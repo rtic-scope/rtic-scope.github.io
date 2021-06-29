@@ -108,6 +108,10 @@ In an RTIC application, tasks are bound to these numbers.
 
 Henceforth, this document will refer to these exceptions/interrupt numbers as interrupt request (IRQ) numbers.
 
+Software tasks are similarly traced, but come at a cost of a =u32= variable write when entering and exiting the task.
+This variable is registered as a watch address in the DWT subsystem.
+Any writes to this address are intercepted, and the new value is encapsulated in an ITM packet along with the ID of the DWT comparator.
+
 ** Host-side information recovery
 The IRQ numbers we receive in a packet must be associated with the RTIC task that changed execution status.
 This is done in a preparatory step before the target is flashed and traced.
@@ -115,6 +119,7 @@ For example, when executing =cargo rtic-scope --bin blinky --serial /dev/ttyUSB=
 1. ~blinky~ is build via a regular =cargo build --bin blinky=.
 2. The RTIC application declaration, =#[app(...)] mod app {...}=, is parsed from ~blinky~'s source code.
    From this declaration, the =#[app(device = ...)]= argument is extracted along with the IRQ label from each =#[task(binds = ...)]= macro occurance.
+   Additionally, software tasks traced using the =#[trace]= macro are enumerated and mapped.
    For example, =device = stm32f4::stm32f401=, =binds = SysTick=, and =binds = EXTI1= might be extracted.
    Here, each IRQ label is associated with the RTIC task it is bound to.
 
@@ -143,6 +148,8 @@ For example, when executing =cargo rtic-scope --bin blinky --serial /dev/ttyUSB=
 * Limitations
 ** RTIC application constrains
 ** Target-side overhead
+- =u32= address write on traced software task enter and exit.
+- Software task tracing requires a dedicated DWT comparator.
 
 * Frequently asked questions
 - Where are all build artifacts stored? :: Most likely under ~target/~, assuming the current working directory is a crate containing target applications.
