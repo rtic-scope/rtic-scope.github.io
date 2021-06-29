@@ -1,38 +1,57 @@
 *NOTE:* The content on this page is a work in progress.
 
 * About
-*RTIC Scope* is a zero-overhead framework for recording and analyzing
-execution traces from RTIC applications on ARM Cortex-M targets.
+*RTIC Scope* is a zero-overhead framework for recording and analyzing execution traces from [[https://rtic.rs][RTIC applications]] on ARM Cortex-M targets.
+The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined by the Cortex-M4 standard.
+# TODO link to standard.
 
 ** Features
-*** Trace
-*** Replay
+The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~rtic-trace~.
+
+- The backend :: is a host-side (i.e., the system that programs the target device) application which exposes two operations:
+  - Tracing :: where the execution trace is captured from the target via a serial device and saved to file.
+  - Replaying :: where previously recorded traces are replayed for postmortem and offline analysis.
+- Frontend(s) :: While tracing and replaying, a trace can be forwarded to a set of frontends via Unix domain sockets, where virtually endless analytics can be applied.
+  Consider, for example, a graphical frontend alike an oscilloscope or a logic analyzer, but instead of signals the RTIC tasks and their executation status (running, scheduled, preempted) is plotted.
+
+  A dummy frontend which applies the backend-frontend API is offered out of the box.
+  It is available for debug and reference purposes.
+  You are encouraged to implement your own frontend, or adapt one developed by the community.
+
+  At present, information only flows from the backend to the frontend.
+  This is subject to change following a post-v1.0.0 release.
+  With bidirectional communication, a frontend can for example apply a complex hardware-in-the-loop testing suite.
+  Please refer to the [[Roadmap][project roadmap]].
+- The target-side tracing crate :: ~rtic-trace~, is an small auxiliary crate applied to the target application under trace.
+  It exposes:
+  - the ~setup~ module :: which is used in the RTIC =#[init]= function.
+    It ensures that the target is properly configured to yield trace information to the host system after =#[init]= is exited.
+  - the =#[trace]= macro :: which is used to trace RTIC software tasks.
+    While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing a single =u32= variable.
+
+  The aim of ~rtic-trace~ (and RTIC Scope as a whole) is to require minimal boilerplate to your RTIC applications.
 
 ** Project repositories/crates
-- [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes
-  received =api::EventChunk= structs to stderr with nanosecond timestamp information.
-- [[https://github.com/rtic-scope/cargo-rtic-scope][cargo-rtic-scope]] :: The RTIC Scope backend which builds the target
-  application, recovers trace information, traces the target, replays
-  traces, etc.
+The framework is managed under the [[https://github.com/rtic-scope][RTIC Scope organization on GitHub]].
+Below is a list of the chief repositories that constitute the project.
+Any other crates listed under the organization but not here are branches of other repositories pending upstream merge.
+
+- [[https://github.com/rtic-scope/cargo-rtic-scope][cargo-rtic-scope]] :: The RTIC Scope backend which builds the target application, recovers trace information, traces the target, replays traces, etc.
+- [[https://github.com/rtic-scope/rtic-trace][rtic-trace]] :: The ~no_std~ crate used to configure the target for tracing purposes.
+- [[https://github.com/rtic-scope/examples][examples]] :: A set of example target applications where the RTIC Scope framework is applied. These are also [[Examples][documented below]].
+- [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes received =api::EventChunk= structs to stderr with nanosecond timestamp information.
 - [[https://github.com/rtic-scope/api][api]] :: The common API used between the RTIC Scope backend and all frontends.
-- [[https://github.com/rtic-scope/examples][examples]] :: A set of example target applications where the RTIC Scope
-  framework is applied. These are documented below in [[Examples]].
-- [[https://github.com/rtic-scope/rtic-trace][rtic-trace]] :: The ~no_std~ crate used to configure the target for
-  tracing purposes.
-- [[https://github.com/rtic-scope/itm-decode][itm-decode]] :: A host-side library that decodes the binary trace stream
-  received from the target to workable Rust structures.
+- [[https://github.com/rtic-scope/itm-decode][itm-decode]] :: A host-side library that decodes the binary trace stream received from the target to workable Rust structures.
 - [[https://github.com/rtic-scope/rfcs][rfcs]] :: A catch-all meta-repository for discussions that encompasses more than a single repository.
 - [[https://github.com/rtic-scope/rtic-scope.github.io][rtic-scope.github.io]] :: The source code for this page.
 
-
 * Requirements
 ** Hardware
-- An embedded system with an ARM Cortex-M MCU and available asyncronous
-  trace pin output.
-- Serial hardware.
+- A target device with an ARM Cortex-M4 MCU and available asynchronous trace pin output.
+- Serial hardware (The [[https://github.com/probe-rs/hs-probe][hs-probe]] will be supported).
 
 ** Software
-- A recent Linux-based operating system.
+- A Linux-based operating system on which a recent Rust toolchain works and serial devices are POSIX-compliant.
 
 * Getting started
 #+begin_src fundamental
@@ -40,10 +59,22 @@ execution traces from RTIC applications on ARM Cortex-M targets.
   $ cargo install rtic-scope-frontend-dummy
 #+end_src
 
-* Examples
-** blinky
+** Examples
+*** blinky
+Assuming Nucleo and hs-probe...
+#+begin_src fundamental
+
+#+end_src
+
+** Applying RTIC Scope on you own project
+   # rephrase this section
+- What must be added?
+- What must be changed?
 
 * How it works
+** ITM/DWT subsystem
+# summarize the protocol here and what info we get from it
+** Host-side
 ~cargo-rtic-scope~ is abstracted in a single-producer, multiple-consumer fashion, where ...
 the heavy work is done while tracing:
 - build the target application
@@ -52,6 +83,11 @@ the heavy work is done while tracing:
 
 * Limitations
 ** Target-side overhead
+
+* Roadmap
+
+* Publications
+thesis and publication here
 
 * License
 TBA
