@@ -138,18 +138,28 @@ For example, when executing =cargo rtic-scope --bin blinky --serial /dev/ttyUSB=
      }
    #+end_src
    After loading the resultant shared library and calling all functions, a ~IRQ number -> IRQ label -> RTIC task~ map ("task map") is yielded.
-4. ~blinky~ is flashed unto the target, and tracing begins after a timestamped reset.
-5. When an ITM packet is received:
-   1. it is first deserialized to a Rust =struct= representation;
-   2. this struct is flushed to file;
-   3. and lastly translated to an =api::EventChunk= by help of the task map and reset timestamp, and forwarded to any configured frontends.
-      This =struct= contains an absolute timestamp and list of events that occured at that time.
+
+Along with the task map, an absolute timestamp must also be calculated for each set of trace packets received.[fn:1]
+This is done by sampling the time just before the target is reset, and by waiting for the target to report the frequency of the trace clock via an ITM packet payload just before the end of =#[init]=.
+This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the metadata of a trace, and is saved as a header to all trace files.
 
 * Limitations
+** Dropped ITM packets
+- Any ITM packets sent before the trace clock frequency payload (TCFP) are currently dropped.
+  See [[https://github.com/rtic-scope/cargo-rtic-scope/issues/14][cargo-rtic-scope#14]].
+- If the input buffer of the serial device is filled, packets will be lost or corrupted.
+  See [[https://github.com/rtic-scope/cargo-rtic-scope/issues/11][cargo-rtic-scope#11]].
+
 ** RTIC application constrains
 ** Target-side overhead
-- =u32= address write on traced software task enter and exit.
-- Software task tracing requires a dedicated DWT comparator.
+- =cortex-m-rtic-trace::setup= must be properly used in =#[init]= to configure the ITM/DWT peripherals.
+  Please refer to the crate documentation on the applied configuration.
+- Before =#[init]= is exited, a =u32= denoting the frequency of the trace clock must be found and written to a watch address.[fn:3]
+- When tracing software tasks:
+  - a DWT comparator must be effectively consumed.
+    Additionally, the ID of the comparator must be communicated to the backend by writing the value to a watch address.
+  - When entering/exiting a software task marked for tracing, a =u8= (at minimum) must be written to a watch addess;
+    a =u32= in the worst case (depending on the number of tracing software tasks[fn:2]).
 
 * Frequently asked questions
 - Where are all build artifacts stored? :: Most likely under ~target/~, assuming the current working directory is a crate containing target applications.
@@ -176,3 +186,10 @@ Bug reports and contributions are welcome. Please file it under the [[Project re
 Project maintainer can be reached via email at [[mailto:vikson-6@student.ltu.se][<vikson-6@student.ltu.se>]].
 
 -----
+
+* Footnotes
+[fn:3] The TCFP /mustn't/ be send at the tail-end of =#[init]=, but it is highly recommended. It must in any case be sent: it is expected by the backend to generate the trace metadata.
+
+[fn:2] The overhead will be =u8= unless your application has more than 256 software tasks.
+
+[fn:1] An absolute timestamp /mustn't/ be calculated, but they come in handy.
