@@ -174,8 +174,10 @@ This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the 
   *NOTE:* any traces saved to the target directory will be lost on a =cargo clean=.
 
 * Roadmap
+A minimum viable product release can be expected soon as [[https://github.com/orgs/rtic-scope/projects/1][all cards of this Kanban]] are in the "Done" column.
 
 * Publications
+TBA
 
 * License
 TBA
