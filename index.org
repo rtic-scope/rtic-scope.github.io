@@ -15,27 +15,20 @@ The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined 
 The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~cortex-m-rtic-trace~.
 
 - The backend :: is a host-side (i.e., the system that programs the target device) application which exposes two operations:
-  - Tracing :: where the execution trace is captured from the target via a serial device and saved to file.
+  - Tracing :: where the execution trace is captured from the target and saved to file.
   - Replaying :: where previously recorded traces are replayed for postmortem and offline analysis.
-- Frontend(s) :: While tracing and replaying, a trace can be forwarded to a set of frontends via Unix domain sockets, where virtually endless analytics can be applied.
-  Consider, for example, a graphical frontend alike an oscilloscope or a logic analyzer, but instead of signals the RTIC tasks and their executation status (running, scheduled, preempted) is plotted.
+- Frontend(s) :: While tracing and replaying, a trace can be forwarded to a set of frontends via Unix domain sockets where virtually endless analytics can be applied.
+  Consider, for example, a graphical frontend alike an oscilloscope or a logic analyzer, but instead of signals the RTIC tasks and their executation statuses (running, scheduled, preempted) are plotted.
 
-  A dummy frontend which applies the backend-frontend API is offered out of the box.
-  It is available for debug and reference purposes.
-  You are encouraged to implement your own frontend, or adapt one developed by the community.
+  A dummy frontend (used for debug and reference purposes) is offered out of the box.
 
   At present, information only flows from the backend to the frontend.
   This is subject to change following a post-v1.0.0 release.
-  With bidirectional communication, a frontend can for example apply a complex hardware-in-the-loop testing suite.
+  With bidirectional communication, a frontend can for example implement a complex hardware-in-the-loop testing suite.
   Please refer to the [[Roadmap][project roadmap]].
 - The target-side tracing crate :: ~cortex-m-rtic-trace~, is an small auxiliary crate applied to the target application under trace.
-  It exposes:
-  - the ~setup~ module :: which is used in the RTIC =#[init]= function.
-    It ensures that the target is properly configured to yield trace information to the host system after =#[init]= is exited.
-  - the =#[trace]= macro :: which is used to trace RTIC software tasks.
-    While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing a single =u32= variable.
-
-  The aim of ~cortex-m-rtic-trace~ (and RTIC Scope as a whole) is to require minimal boilerplate to your RTIC applications.
+  It only exposes the =#[trace]= macro, which is used to trace RTIC software tasks.
+  While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing a single =u32= variable.
 
 ** Project repositories/crates
 The framework is managed under the [[https://github.com/rtic-scope][RTIC Scope organization on GitHub]].
@@ -53,24 +46,160 @@ Any other crates listed under the organization but not here are branches of othe
 
 * Requirements
 ** Hardware
-- A target device with an ARM Cortex-M4 MCU and available asynchronous trace pin output.
-- Serial hardware (The [[https://github.com/probe-rs/hs-probe][hs-probe]] will be supported).
+- A target device with an ARMv7-M MCU. and available asynchronous trace pin output.
+- A CMSIS-DAP hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace output from the target.
 
 ** Software
-- A Linux-based operating system on which a recent Rust toolchain works and serial devices are POSIX-compliant.
+- A Linux-based operating system on which a recent Rust toolchain. MSRV TBA.
 
 * Getting started
+Install the backend and reference frontend via
 #+begin_src fundamental
-  $ cargo install cargo-rtic-scope
+  $ cargo install --git https://github.com/rtic-scope/cargo-rtic-scope.git
   $ cargo install rtic-scope-frontend-dummy
 #+end_src
 
 ** Examples
 *** blinky
-Assuming Nucleo and hs-probe...
+Assuming you have a STM32F401 Nucleo-64 at hand, let us trace a simple blinky application:
 #+begin_src fundamental
+  $ git clone https://github.com/rtic-scope/examples.git && cd examples
+  $ cargo rtic-scope trace --bin blinky-noconf --chip stm32f401re --clear-traces
+  "cargo" "build" "--bin" "blinky-noconf" "--message-format=json"
+     Compiling trace-examples v0.1.0 (/home/tmplt/exjobb/trace-examples)
+      Finished dev [unoptimized + debuginfo] target(s) in 1.88s
+  warning: unused import: `trace`
+    --> src/bin/blinky-noconf.rs:10:37
+     |
+  10 |     use cortex_m_rtic_trace::{self, trace};
+     |                                     ^^^^^
+     |
+     = note: `#[warn(unused_imports)]` on by default
 
+  warning: unused import: `cortex_m::asm`
+    --> src/bin/blinky-noconf.rs:12:9
+     |
+  12 |     use cortex_m::asm;
+     |         ^^^^^^^^^^^^^
+
+  warning: variable does not need to be mutable
+    --> src/bin/blinky-noconf.rs:20:13
+     |
+  20 |     fn init(mut ctx: init::Context) -> (init::LateResources, init::Monotonics) {
+     |             ----^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` on by default
+
+  warning: 3 warnings emitted
+
+  Flashing /home/tmplt/exjobb/trace-examples/target/thumbv7em-none-eabihf/debug/blinky-noconf...
+  Flashed.
+  Resetting target...
+  Reset.
+  exceptions:
+           SysTick -> ["app", "toggle"]
+  interrupts:
+  software tasks:
+
+  reset timestamp: 2021-07-05 13:46:53.931431868 +02:00
+  trace clock frequency: 16000000 Hz
+
+  Buffer size of source could not be found. Buffer may overflow and corrupt trace stream without warning.
+  Failed to resolve chunk from TimestampedTracePackets { timestamp: Timestamp { base: None, delta: Some(1940184), data_relation: Some(Sync), diverged: false }, packets: [ExceptionTrace { exception: ThreadMode, action: Entered }] }. Reason: Don't know what to do with ThreadMode. Ignoring...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  ^Cdummy: @1625485614177693306 ns (+1625485614177693306 ns): []
+  dummy: @1625485614302693243 ns (+124999937 ns): []
+  dummy: @1625485614427693181 ns (+124999938 ns): []
+  dummy: @1625485614552693118 ns (+124999937 ns): []
+  dummy: @1625485614677693056 ns (+124999938 ns): []
+  dummy: @1625485614802692993 ns (+124999937 ns): []
+  dummy: @1625485614927692931 ns (+124999938 ns): []
+  dummy: @1625485615052692868 ns (+124999937 ns): []
+  dummy: @1625485615052769556 ns (+76688 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485615177790743 ns (+124999937 ns): []
+  dummy: @1625485615302790681 ns (+124999938 ns): []
+  dummy: @1625485615427790618 ns (+124999937 ns): []
+  dummy: @1625485615552790556 ns (+124999938 ns): []
+  dummy: @1625485615677790493 ns (+124999937 ns): []
+  dummy: @1625485615802790431 ns (+124999938 ns): []
+  dummy: @1625485615927790368 ns (+124999937 ns): []
+  dummy: @1625485616052768868 ns (+124978500 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485616052790181 ns (+21313 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485616177790118 ns (+124999937 ns): []
+  dummy: @1625485616302790056 ns (+124999938 ns): []
+  dummy: @1625485616427789993 ns (+124999937 ns): []
+  dummy: @1625485616552789931 ns (+124999938 ns): []
+  dummy: @1625485616677789868 ns (+124999937 ns): []
+  dummy: @1625485616802789806 ns (+124999938 ns): []
+  dummy: @1625485616927789743 ns (+124999937 ns): []
+  dummy: @1625485617052768368 ns (+124978625 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485617052789618 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485617177789556 ns (+124999938 ns): []
+  dummy: @1625485617302789493 ns (+124999937 ns): []
+  dummy: @1625485617427789431 ns (+124999938 ns): []
+  dummy: @1625485617552789368 ns (+124999937 ns): []
 #+end_src
+
+Now, let us list and replay the trace we just recorded:
+#+begin_src fundamental
+  $ cargo rtic-scope replay --bin blinky-noconf --list
+  0       /home/tmplt/exjobb/trace-examples/target/rtic-traces/blinky-noconf-ge9d44c3-2021-07-05T13:46:53.trace
+  $ cargo rtic-scope replay 0 --bin blinky-noconf
+  Replaying /home/tmplt/exjobb/trace-examples/target/rtic-traces/blinky-noconf-ge9d44c3-2021-07-05T13:46:53.trace
+  exceptions:
+           SysTick -> ["app", "toggle"]
+  interrupts:
+  software tasks:
+
+  reset timestamp: 2021-07-05 13:46:53.931431868 +02:00
+  trace clock frequency: 16000000 Hz
+
+  Failed to resolve chunk from TimestampedTracePackets { timestamp: Timestamp { base: None, delta: Some(1940184), data_relation: Some(Sync), diverged: false }, packets: [ExceptionTrace { exception: ThreadMode, action: Entered }] }. Reason: Don't know what to do with ThreadMode. Ignoring...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  dummy: @1625485614177693306 ns (+1625485614177693306 ns): []
+  dummy: @1625485614302693243 ns (+124999937 ns): []
+  dummy: @1625485614427693181 ns (+124999938 ns): []
+  dummy: @1625485614552693118 ns (+124999937 ns): []
+  dummy: @1625485614677693056 ns (+124999938 ns): []
+  dummy: @1625485614802692993 ns (+124999937 ns): []
+  dummy: @1625485614927692931 ns (+124999938 ns): []
+  dummy: @1625485615052692868 ns (+124999937 ns): []
+  dummy: @1625485615052769556 ns (+76688 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485615177790743 ns (+124999937 ns): []
+  dummy: @1625485615302790681 ns (+124999938 ns): []
+  dummy: @1625485615427790618 ns (+124999937 ns): []
+  dummy: @1625485615552790556 ns (+124999938 ns): []
+  dummy: @1625485615677790493 ns (+124999937 ns): []
+  dummy: @1625485615802790431 ns (+124999938 ns): []
+  dummy: @1625485615927790368 ns (+124999937 ns): []
+  dummy: @1625485616052768868 ns (+124978500 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485616052790181 ns (+21313 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485616177790118 ns (+124999937 ns): []
+  dummy: @1625485616302790056 ns (+124999938 ns): []
+  dummy: @1625485616427789993 ns (+124999937 ns): []
+  dummy: @1625485616552789931 ns (+124999938 ns): []
+  dummy: @1625485616677789868 ns (+124999937 ns): []
+  dummy: @1625485616802789806 ns (+124999938 ns): []
+  dummy: @1625485616927789743 ns (+124999937 ns): []
+  dummy: @1625485617052768368 ns (+124978625 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485617052789618 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485617177789556 ns (+124999938 ns): []
+  dummy: @1625485617302789493 ns (+124999937 ns): []
+  dummy: @1625485617427789431 ns (+124999938 ns): []
+  dummy: @1625485617552789368 ns (+124999937 ns): []
+#+end_src
+
+We can read from the ~dummy~ frontend that toggling a LED takes about 21µs in debug mode.
 
 * How it works
 ** ITM/DWT subsystem
@@ -174,13 +303,16 @@ This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the 
   *NOTE:* any traces saved to the target directory will be lost on a =cargo clean=.
 
 * Roadmap
-A minimum viable product release can be expected soon as [[https://github.com/orgs/rtic-scope/projects/1][all cards of this Kanban]] are in the "Done" column.
+A minimum viable product release can be expected as soon as [[https://github.com/orgs/rtic-scope/projects/1][all cards of this Kanban]] are in the "Done" column.
 
 * Publications
 TBA
 
 * License
-TBA
+For non-commercial purposes, RTIC Scope is licensed under both the MIT licence and the Apache Licence (Version 2.0).
+For commercial support and alternative licensing, inquire via [[mailto:contact@grepit.se][<contact@grepit.se>]].
+
+RTIC Scope is maintained in cooperation with Grepit AB and Luleå Technical University, Sweden.
 
 * Contact, bug reports and contributions
 Bug reports and contributions are welcome. Please file it under the [[Project repositories/crates][relevant repository]].
