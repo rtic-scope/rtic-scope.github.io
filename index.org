@@ -3,7 +3,7 @@
 #+EMAIL: vikson-6@student.ltu.se
 
 
-*NOTE:* This document is a work in progress.
+*NOTE:* RTIC Scope and this document are works in progress.
 
 -----
 
@@ -15,20 +15,26 @@ The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined 
 The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~cortex-m-rtic-trace~.
 
 - The backend :: is a host-side (i.e., the system that programs the target device) application which exposes two operations:
-  - Tracing :: where the target is flashed with the wanted firmware and the execution trace is captured and saved to file.
-  - Replaying :: where previously recorded traces are replayed for postmortem and offline analysis.
+  - =trace= :: where the target is flashed with the wanted firmware and the execution trace is captured and saved to file.
+  - =replay= :: where previously recorded traces are replayed for postmortem and offline analysis.
 - Frontend(s) :: While tracing and replaying, a trace can be forwarded to a set of frontends via Unix domain sockets where virtually endless analytics can be applied.
   Consider, for example, a graphical frontend alike an oscilloscope or a logic analyzer, but instead of signals the RTIC tasks and their executation statuses (running, scheduled, preempted) are plotted.
-
-  A dummy frontend (used for debug and reference purposes) is available out of the box.
+  A dummy frontend (used for debug and reference purposes) is available out of the box;
+  the dummy prints received events, their absolute timestamps, and the time since the last chunk of events.
+  For example:
+  #+begin_src fundamental
+    dummy: @1625485615052692868 ns (+124999937 ns): [] # the local timestamp clock overflowed, but nothing else happened
+    dummy: @1625485615052769556 ns (+76688 ns): [Task { name: "app::toggle", action: Entered }]
+    dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  #+end_src
 
   At present, information only flows from the backend to the frontend.
-  This is subject to change following a post-v1.0.0 release.
+  This is subject to change.
   With bidirectional communication a frontend can for example implement a complex hardware-in-the-loop testing suite.
   Please refer to the [[Roadmap][project roadmap]].
 - The target-side tracing crate :: ~cortex-m-rtic-trace~, is an small auxiliary crate applied to the target application under trace.
   It only exposes the =#[trace]= macro, which is used to trace RTIC software tasks.
-  While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing a single =u32= variable.
+  While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing to a =u32=-variable twice.
 
 ** Project repositories/crates
 The framework is managed under the [[https://github.com/rtic-scope][RTIC Scope organization on GitHub]].
@@ -50,7 +56,7 @@ Any other crates listed under the organization but not here are branches of othe
 - A CMSIS-DAP hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace stream from the target.
 
 ** Software
-- A Linux-based operating system on which a recent Rust toolchain. MSRV TBA.
+- A Linux-based operating system with a recent Rust toolchain. MSRV TBA.
 
 * Getting started
 Install the backend and reference frontend via
@@ -64,7 +70,7 @@ Install the backend and reference frontend via
 Assuming you have a STM32F401 Nucleo-64 at hand, let us trace a simple blinky application:
 #+begin_src fundamental
   $ git clone https://github.com/rtic-scope/examples.git && cd examples
-  $ cargo rtic-scope trace --bin blinky-noconf --chip stm32f401re --clear-traces
+  $ cargo rtic-scope trace --bin blinky-noconf --chip stm32f401re --clear-traces --tpiu-freq 16000000
   "cargo" "build" "--bin" "blinky-noconf" "--message-format=json"
      Compiling trace-examples v0.1.0 (/home/tmplt/exjobb/trace-examples)
       Finished dev [unoptimized + debuginfo] target(s) in 1.88s
@@ -201,9 +207,21 @@ Now, let us list and replay the trace we just recorded:
 
 We can read from the ~dummy~ frontend that toggling a LED takes about 21µs in debug mode.
 
+* Concepts
+- Source :: a [trace] source is any implementation of [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sources/mod.rs#L20][=trait Source=]] from which decoded trace packets can be pulled via =Iterator::next=.
+  A source can be a live target via =DAPSource= (e.g. an STLink), =TTYSource= (i.e. a ~/dev/tty*~ device), or a file on disk via =FileSource=.
+- Sink :: a [trace] sink is any implementation of =trait Sink= to which decoded trace packets can be [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sinks/mod.rs][=Sink::drain=]]ed (alt. "forwarded").
+  A sink can be a file on disk via =FileSink= or a frontend via =FrontendSink=.
+
+~cargo-rtic-scope~  abstracts its operation into a single sink and set of sinks.
+After these have been contructed along with the [[Host-side information recovery][trace metadata]], packets are continously read from the source and forwarded to all sinks.
+If a sink breaks (i.e. =Sink::drain= yields =Err=) the user is warned.
+If all sinks break, cargo exits non-zero.
+If at least one sink is available, ~cargo-rtic-scope~ continues to trace/replay until =Source::next= yields =None= or =Some(Err)=, or until SIGINT is received.
+
 * How it works
 ** The ITM/DWT subsystem
-Over serial communication a stream of back-to-back ITM packets are received.
+From a target or a file a stream of back-to-back ITM packets are read.
 Each packet contains a header and a number of payload bytes.
 Of special interest are exception trace packets:
 #+begin_quote
@@ -239,12 +257,12 @@ Henceforth, this document will refer to these exceptions/interrupt numbers as in
 
 Software tasks are similarly traced, but come at a cost of a =u32= variable write when entering and exiting the task.
 This variable is registered as a watch address in the DWT subsystem.
-Any writes to this address are intercepted, and the new value is encapsulated in an ITM packet along with the ID of the DWT comparator.
+Any writes to this address are asynchronously intercepted in hardware, and the new value is encapsulated in an ITM packet along with the ID of the DWT comparator.
 
 ** Host-side information recovery
-The IRQ numbers we receive in a packet must be associated back to the correct RTIC tasks.
+The received IRQ numbers in a packet must be associated back to the correct RTIC tasks.
 This is done in a preparatory step before the target is flashed and traced.
-For example, when executing =cargo rtic-scope --bin blinky --chip stm32f401re=:
+For example, when executing =cargo rtic-scope --bin blinky [options]=:
 1. ~blinky~ is build via a regular =cargo build --bin blinky=.
 2. The RTIC application declaration, =#[app(...)] mod app {...}=, is parsed from ~blinky~'s source code.
    From this declaration, the =#[app(device = ...)]= argument is extracted along with the IRQ label from each =#[task(binds = ...)]= macro occurance.
@@ -252,14 +270,14 @@ For example, when executing =cargo rtic-scope --bin blinky --chip stm32f401re=:
    For example, =device = stm32f4::stm32f401=, =binds = SysTick=, and =binds = EXTI1= might be extracted.
    Here, each IRQ label is associated with the RTIC task it is bound to.
 
-   This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to [[Limitations]].
+   This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to [[RTIC application constrains]].
 3. An adhoc cdylib crate is then built which translates IRQ labels to IRQ numbers.
-   For example, the adhoc crate might contain
+   ~libadhoc~ will look like the following with the parse information from the previous step:
    #+begin_src rust
      use stm32f4::stm32f401::Interrupt;
 
      // Only external interrupts need be written here.
-     // Exceptions-bound tasks are resolved using the above table.
+     // Exceptions-bound tasks are resolved using the table above.
 
      #[no_mangle]
      pub extern fn rtic_scope_func_EXTI1() -> u8 {
@@ -268,47 +286,59 @@ For example, when executing =cargo rtic-scope --bin blinky --chip stm32f401re=:
    #+end_src
    After loading the resultant shared library and calling all functions, a ~IRQ number -> IRQ label -> RTIC task~ map ("task map") is yielded.
 
-Along with the task map, an absolute timestamp must also be calculated for each set of trace packets received.[fn:1]
-This is done by sampling the time just before the target is reset and by reading the trace clock frequency via the CMSIS-DAP probe.
+Along with the task map, an absolute timestamp is also be calculated for each set of trace packets received.
+This is done by sampling the time just before the target is reset and applying an offset based upon the trace clock frequency and local/global timestamps received over ITM.
+This frequency can be set via ~--tpiu-freq~.
+If not set, a ~DataTraceValue~ with a non-zero 4B payload is expected in the trace and interpreted as a =u32= representation of the trace clock frequency.
+Only the first packet of this type is intercepted and consumed.
 
 This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the metadata of a trace, and is saved as a header to all trace files.
 
 * Limitations
 ** Dropped ITM packets
 If the input buffer of the serial device is filled, packets will be lost or corrupted.
-A warning will be printed before this buffer is overflowed, or if the buffer size cannot be found.
+A warning will be printed before this buffer is overflowed, or if the buffer size cannot be determined.
 
 ** RTIC application constrains
 At present, the ~device~ argument of the RTIC app macro, i.e. =#[app(device = stm32f4::stm32f401, ...)]=, is interpreted as a crate name and feature combination.
 In this example, ~stm32f4~ is interpreted as the crate name, and ~stm32f401~ as the crate feature when building the adhoc cdylib crate.
 Additionally, the ~Interrupt~ enum of this peripheral access crate is expected at =stm32f4::stm32f401::Interrupt=.
 [[https://github.com/rtic-scope/cargo-rtic-scope/issues/22][This contraint is planned to be lifted]].
-See [[https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.rs][the examples]] for how to write an RTIC Scope compliant RTIC application.
+See [[https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.rs][the examples]] for how to write an RTIC Scope-compliant application.
 
 ** Target-side overhead
-When tracing software tasks:
-- a DWT comparator must be effectively consumed.
-  Additionally, the ID of the comparator must be communicated to the backend by writing the value to a watch address.
-- When entering/exiting a software task marked for tracing, a =u8= (at minimum) must be written to a watch addess;
-  a =u32= in the worst case (depending on the number of tracing software tasks[fn:2]).
+- If ~--tpiu-freq~ is not set, it is up to the target application to wholly configure tracing and send the correct trace clock frequency value.
+  See [[https://github.com/rtic-scope/cargo-rtic-scope/issues/20][#20]].
+- When tracing software tasks:
+  - a DWT comparator must be effectively consumed.
+    Additionally, the ID of the comparator must be communicated to the backend by writing the value to a watch address.
+  - When entering/exiting a software task marked for tracing, a =u8= (at minimum) must be written to a watch addess;
+    a =u32= in the worst case (depending on the number of tracing software tasks[fn:2]).
 
 * Frequently asked questions
 - Where are all build artifacts stored? :: Most likely under ~target/~, assuming the current working directory is a crate containing target applications.
   The target directory can be overridden via =TARGET_DIR= or the =--target-dir= option.
   Note that the RTIC application will be rebuilt to this location.
 
-  ~cargo rtic-scope~ also respecets [[https://doc.rust-lang.org/cargo/reference/config.html][Cargo's configuration system]].
+  ~cargo-rtic-scope~ also respecets [[https://doc.rust-lang.org/cargo/reference/config.html][Cargo's configuration system]].
 - Where are all traces saved to? :: Recorded traces are serialized to JSON to ~/path/to/target-dir/rtic-traces~, which means ~target/rtic-traces~ by default.
   This directory can be overridden via the ~--trace-dir~ option.
-  The same option  is used to replay traces located in non-default location.
+  The same option  is used to replay traces located in a non-default location.
 
   *NOTE:* any traces saved to the target directory will be lost on a =cargo clean=.
 
 * Roadmap
-A minimum viable product release can be expected as soon as [[https://github.com/orgs/rtic-scope/projects/1][all cards of this project]] are in the "Done" column.
-The MVP only traces hardware tasks.
-Software task tracing is not yet fully implemented.
-A [[https://github.com/orgs/rtic-scope/projects/2][tracking project]] is also available for a v1.0.0 release.
+The milestone for a minimum valueable product has been reached as of <2021-07-06 Tue>!
+This MVP only traces hardware tasks; software task tracing is not yet fully implemented.
+
+[[https://github.com/rtic-scope/cargo-rtic-scope/milestone/2][Another milestone has been defined for a first stable release]].
+
+* Known issues
+Of note:
+- The CMSIS-DAP source (for example STLinks) are not stable. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/18][#18]])
+- Arguments to cargo are not forwarded. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/9][#9]])
+
+[[https://github.com/rtic-scope/cargo-rtic-scope/issues][See the issue tracker for all known issues]].
 
 * Publications
 TBA
@@ -322,11 +352,11 @@ RTIC Scope is maintained in cooperation with Grepit AB and Luleå Technical Univ
 * Contact, bug reports and contributions
 Bug reports and contributions are welcome. Please file it under the [[Project repositories/crates][relevant repository]].
 
-Project maintainer can be reached via email at [[mailto:vikson-6@student.ltu.se][<vikson-6@student.ltu.se>]].
+Project maintainer can be reached via email at [[mailto:v@tmplt.dev][<v@tmplt.dev>]].
 
 -----
 
 * Footnotes
-[fn:2] The overhead will be =u8= unless your application has more than 256 software tasks.
 
-[fn:1] An absolute timestamp /mustn't/ be calculated, but they come in handy.
+[fn:1] This received payload is
+[fn:2] The overhead will be =u8= unless your application has more than 256 software tasks.
