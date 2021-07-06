@@ -8,23 +8,23 @@
 -----
 
 * About
-*RTIC Scope* is a zero-overhead framework for recording and analyzing execution traces from [[https://rtic.rs][RTIC applications]] on ARM Cortex-M targets.
+*RTIC Scope* is a zero-overhead framework for recording and analyzing execution traces from [[https://rtic.rs][RTIC applications]] on ARMv7-M targets.
 The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined by the [[https://developer.arm.com/documentation/ddi0403/ed/][ARMv7-M Architecture Reference Manual]], Appendix D4.
 
 ** Features
 The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~cortex-m-rtic-trace~.
 
 - The backend :: is a host-side (i.e., the system that programs the target device) application which exposes two operations:
-  - Tracing :: where the execution trace is captured from the target and saved to file.
+  - Tracing :: where the target is flashed with the wanted firmware and the execution trace is captured and saved to file.
   - Replaying :: where previously recorded traces are replayed for postmortem and offline analysis.
 - Frontend(s) :: While tracing and replaying, a trace can be forwarded to a set of frontends via Unix domain sockets where virtually endless analytics can be applied.
   Consider, for example, a graphical frontend alike an oscilloscope or a logic analyzer, but instead of signals the RTIC tasks and their executation statuses (running, scheduled, preempted) are plotted.
 
-  A dummy frontend (used for debug and reference purposes) is offered out of the box.
+  A dummy frontend (used for debug and reference purposes) is available out of the box.
 
   At present, information only flows from the backend to the frontend.
   This is subject to change following a post-v1.0.0 release.
-  With bidirectional communication, a frontend can for example implement a complex hardware-in-the-loop testing suite.
+  With bidirectional communication a frontend can for example implement a complex hardware-in-the-loop testing suite.
   Please refer to the [[Roadmap][project roadmap]].
 - The target-side tracing crate :: ~cortex-m-rtic-trace~, is an small auxiliary crate applied to the target application under trace.
   It only exposes the =#[trace]= macro, which is used to trace RTIC software tasks.
@@ -38,16 +38,16 @@ Any other crates listed under the organization but not here are branches of othe
 - [[https://github.com/rtic-scope/cargo-rtic-scope][cargo-rtic-scope]] :: The RTIC Scope backend which builds the target application, recovers trace information, traces the target, replays traces, etc.
 - [[https://github.com/rtic-scope/cortex-m-rtic-trace][cortex-m-rtic-trace]] :: The ~no_std~ crate used to configure the target for tracing purposes.
 - [[https://github.com/rtic-scope/examples][examples]] :: A set of example target applications where the RTIC Scope framework is applied. These are also [[Examples][documented below]].
-- [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes received =api::EventChunk= structs to stderr with nanosecond timestamp information.
 - [[https://github.com/rtic-scope/api][api]] :: The common API used between the RTIC Scope backend and all frontends.
+- [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes received =api::EventChunk= structs to stderr with nanosecond timestamp information.
 - [[https://github.com/rtic-scope/itm-decode][itm-decode]] :: A host-side library that decodes the binary trace stream received from the target to workable Rust structures.
 - [[https://github.com/rtic-scope/rfcs][rfcs]] :: A catch-all meta-repository for discussions that encompasses more than a single repository.
 - [[https://github.com/rtic-scope/rtic-scope.github.io][rtic-scope.github.io]] :: The source code for this page.
 
 * Requirements
 ** Hardware
-- A target device with an ARMv7-M MCU. and available asynchronous trace pin output.
-- A CMSIS-DAP hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace output from the target.
+- A target device with an ARMv7-M MCU.
+- A CMSIS-DAP hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace stream from the target.
 
 ** Software
 - A Linux-based operating system on which a recent Rust toolchain. MSRV TBA.
@@ -202,7 +202,7 @@ Now, let us list and replay the trace we just recorded:
 We can read from the ~dummy~ frontend that toggling a LED takes about 21µs in debug mode.
 
 * How it works
-** ITM/DWT subsystem
+** The ITM/DWT subsystem
 Over serial communication a stream of back-to-back ITM packets are received.
 Each packet contains a header and a number of payload bytes.
 Of special interest are exception trace packets:
@@ -211,7 +211,7 @@ The DWT unit can generate an Exception trace packet whenever then processor ente
 --- Appendix D4.3.2
 #+end_quote
 This packet then contains one of the exception numbers listed in the table below.
-In an RTIC application, tasks are bound to these numbers.
+These numbers are bound to RTIC tasks.
 
 #+CAPTION: ARMv7-M Exception numbers
 #+ATTR_HTML: :rules all
@@ -242,9 +242,9 @@ This variable is registered as a watch address in the DWT subsystem.
 Any writes to this address are intercepted, and the new value is encapsulated in an ITM packet along with the ID of the DWT comparator.
 
 ** Host-side information recovery
-The IRQ numbers we receive in a packet must be associated with the RTIC task that changed execution status.
+The IRQ numbers we receive in a packet must be associated back to the correct RTIC tasks.
 This is done in a preparatory step before the target is flashed and traced.
-For example, when executing =cargo rtic-scope --bin blinky --serial /dev/ttyUSB=:
+For example, when executing =cargo rtic-scope --bin blinky --chip stm32f401re=:
 1. ~blinky~ is build via a regular =cargo build --bin blinky=.
 2. The RTIC application declaration, =#[app(...)] mod app {...}=, is parsed from ~blinky~'s source code.
    From this declaration, the =#[app(device = ...)]= argument is extracted along with the IRQ label from each =#[task(binds = ...)]= macro occurance.
@@ -269,26 +269,28 @@ For example, when executing =cargo rtic-scope --bin blinky --serial /dev/ttyUSB=
    After loading the resultant shared library and calling all functions, a ~IRQ number -> IRQ label -> RTIC task~ map ("task map") is yielded.
 
 Along with the task map, an absolute timestamp must also be calculated for each set of trace packets received.[fn:1]
-This is done by sampling the time just before the target is reset, and by waiting for the target to report the frequency of the trace clock via an ITM packet payload just before the end of =#[init]=.
+This is done by sampling the time just before the target is reset and by reading the trace clock frequency via the CMSIS-DAP probe.
+
 This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the metadata of a trace, and is saved as a header to all trace files.
 
 * Limitations
 ** Dropped ITM packets
-- Any ITM packets sent before the trace clock frequency payload (TCFP) are currently dropped.
-  See [[https://github.com/rtic-scope/cargo-rtic-scope/issues/14][cargo-rtic-scope#14]].
-- If the input buffer of the serial device is filled, packets will be lost or corrupted.
-  See [[https://github.com/rtic-scope/cargo-rtic-scope/issues/11][cargo-rtic-scope#11]].
+If the input buffer of the serial device is filled, packets will be lost or corrupted.
+A warning will be printed before this buffer is overflowed, or if the buffer size cannot be found.
 
 ** RTIC application constrains
+At present, the ~device~ argument of the RTIC app macro, i.e. =#[app(device = stm32f4::stm32f401, ...)]=, is interpreted as a crate name and feature combination.
+In this example, ~stm32f4~ is interpreted as the crate name, and ~stm32f401~ as the crate feature when building the adhoc cdylib crate.
+Additionally, the ~Interrupt~ enum of this peripheral access crate is expected at =stm32f4::stm32f401::Interrupt=.
+[[https://github.com/rtic-scope/cargo-rtic-scope/issues/22][This contraint is planned to be lifted]].
+See [[https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.rs][the examples]] for how to write an RTIC Scope compliant RTIC application.
+
 ** Target-side overhead
-- =cortex-m-rtic-trace::setup= must be properly used in =#[init]= to configure the ITM/DWT peripherals.
-  Please refer to the crate documentation on the applied configuration.
-- Before =#[init]= is exited, a =u32= denoting the frequency of the trace clock must be found and written to a watch address.[fn:3]
-- When tracing software tasks:
-  - a DWT comparator must be effectively consumed.
-    Additionally, the ID of the comparator must be communicated to the backend by writing the value to a watch address.
-  - When entering/exiting a software task marked for tracing, a =u8= (at minimum) must be written to a watch addess;
-    a =u32= in the worst case (depending on the number of tracing software tasks[fn:2]).
+When tracing software tasks:
+- a DWT comparator must be effectively consumed.
+  Additionally, the ID of the comparator must be communicated to the backend by writing the value to a watch address.
+- When entering/exiting a software task marked for tracing, a =u8= (at minimum) must be written to a watch addess;
+  a =u32= in the worst case (depending on the number of tracing software tasks[fn:2]).
 
 * Frequently asked questions
 - Where are all build artifacts stored? :: Most likely under ~target/~, assuming the current working directory is a crate containing target applications.
@@ -303,7 +305,10 @@ This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the 
   *NOTE:* any traces saved to the target directory will be lost on a =cargo clean=.
 
 * Roadmap
-A minimum viable product release can be expected as soon as [[https://github.com/orgs/rtic-scope/projects/1][all cards of this Kanban]] are in the "Done" column.
+A minimum viable product release can be expected as soon as [[https://github.com/orgs/rtic-scope/projects/1][all cards of this project]] are in the "Done" column.
+The MVP only traces hardware tasks.
+Software task tracing is not yet fully implemented.
+A [[https://github.com/orgs/rtic-scope/projects/2][tracking project]] is also available for a v1.0.0 release.
 
 * Publications
 TBA
@@ -322,8 +327,6 @@ Project maintainer can be reached via email at [[mailto:vikson-6@student.ltu.se]
 -----
 
 * Footnotes
-[fn:3] The TCFP /mustn't/ be send at the tail-end of =#[init]=, but it is highly recommended. It must in any case be sent: it is expected by the backend to generate the trace metadata.
-
 [fn:2] The overhead will be =u8= unless your application has more than 256 software tasks.
 
 [fn:1] An absolute timestamp /mustn't/ be calculated, but they come in handy.
