@@ -12,7 +12,7 @@
 The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined by the [[https://developer.arm.com/documentation/ddi0403/ed/][ARMv7-M Architecture Reference Manual]], Appendix D4.
 
 ** Features
-The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~cortex-m-rtic-trace~.
+The framework is split into three main components: the canonical backend, the frontend(s), and the target-side tracing crate, ~cortex-m-rtic-trace~.
 
 - The backend :: is a host-side (i.e., the system that programs the target device) application which exposes two operations:
   - =trace= :: where the target is flashed with the wanted firmware and the execution trace is captured and saved to file.
@@ -20,7 +20,7 @@ The framework is split into three chief components: the canonical backend, the f
 - Frontend(s) :: While tracing and replaying, a trace can be forwarded to a set of frontends via Unix domain sockets where virtually endless analytics can be applied.
   Consider, for example, a graphical frontend alike an oscilloscope or a logic analyzer, but instead of signals the RTIC tasks and their executation statuses (running, scheduled, preempted) are plotted.
   A dummy frontend (used for debug and reference purposes) is available out of the box;
-  the dummy prints received events, their absolute timestamps, and the time since the last chunk of events.
+  the dummy frontend prints received events, their absolute timestamps, and the time since the last chunk of events.
   For example:
   #+begin_src fundamental
     dummy: @1625485615052692868 ns (+124999937 ns): [] # the local timestamp clock overflowed, but nothing else happened
@@ -28,35 +28,35 @@ The framework is split into three chief components: the canonical backend, the f
     dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
   #+end_src
 
-  At present, information only flows from the backend to the frontend.
-  This is subject to change.
-  With bidirectional communication a frontend can for example implement a complex hardware-in-the-loop testing suite.
-  Please refer to the [[Roadmap][project roadmap]].
-- The target-side tracing crate :: ~cortex-m-rtic-trace~, is an small auxiliary crate applied to the target application under trace.
+  At present, information only flows from the backend to the frontend dummy.
+  In the future, bidirectional communication will be possible, enabling a frontend
+  to implement a complex hardware-in-the-loop testing suite.
+  Please refer to the [[Roadmap][project roadmap]] for future prospects.
+- The target-side tracing crate :: ~cortex-m-rtic-trace~, is a small auxiliary crate applied to the target application when tracing.
   It only exposes the =#[trace]= macro, which is used to trace RTIC software tasks.
-  While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing to a =u32=-variable twice.
+  NOTE: While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing to a =u32=-variable twice.
 
 ** Project repositories/crates
 The framework is managed under the [[https://github.com/rtic-scope][RTIC Scope organization on GitHub]].
-Below is a list of the chief repositories that constitute the project.
+Below is a list of the main repositories that constitute the RTIC project.
 Any other crates listed under the organization but not here are branches of other repositories pending upstream merge.
 
 - [[https://github.com/rtic-scope/cargo-rtic-scope][cargo-rtic-scope]] :: The RTIC Scope backend which builds the target application, recovers trace information, traces the target, replays traces, etc.
-- [[https://github.com/rtic-scope/cortex-m-rtic-trace][cortex-m-rtic-trace]] :: The ~no_std~ crate used to configure the target for tracing purposes.
+- [[https://github.com/rtic-scope/cortex-m-rtic-trace][cortex-m-rtic-trace]] :: ~no_std~ crate used to configure the target device for tracing purposes.
 - [[https://github.com/rtic-scope/examples][examples]] :: A set of example target applications where the RTIC Scope framework is applied. These are also [[Examples][documented below]].
 - [[https://github.com/rtic-scope/api][api]] :: The common API used between the RTIC Scope backend and all frontends.
 - [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes received =api::EventChunk= structs to stderr with nanosecond timestamp information.
 - [[https://github.com/rtic-scope/itm-decode][itm-decode]] :: A host-side library that decodes the binary trace stream received from the target to workable Rust structures.
-- [[https://github.com/rtic-scope/rfcs][rfcs]] :: A catch-all meta-repository for discussions that encompasses more than a single repository.
-- [[https://github.com/rtic-scope/rtic-scope.github.io][rtic-scope.github.io]] :: The source code for this page.
+- [[https://github.com/rtic-scope/rfcs][rfcs]] :: A catch-all meta-repository for discussions and feature suggestions that encompass more than a single repository.
+- [[https://github.com/rtic-scope/rtic-scope.github.io][rtic-scope.github.io]] :: The source code for this web page.
 
 * Requirements
 ** Hardware
 - A target device with an ARMv7-M MCU.
-- A CMSIS-DAP hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace stream from the target.
+- A CMSIS-DAP hardware probe supported by ~probe-rs~ /or/ some serial hardware that exposes a serial device which then can be used to read the trace stream from the target device.
 
 ** Software
-- A Linux-based operating system with a recent Rust toolchain. MSRV TBA.
+- A Linux-based operating system with a recent Rust toolchain. Minimum supported Rust version TBA.
 
 * Getting started
 Install the backend and reference frontend via
@@ -67,7 +67,7 @@ Install the backend and reference frontend via
 
 ** Examples
 *** blinky
-Assuming you have a STM32F401 Nucleo-64 at hand, let us trace a simple blinky application:
+Assuming you have a STM32F401 Nucleo-64 at hand, let us get a trace from a simple blinking LED application:
 #+begin_src fundamental
   $ git clone https://github.com/rtic-scope/examples.git && cd examples
   $ cargo rtic-scope trace --bin blinky-noconf --chip stm32f401re --clear-traces --tpiu-freq 16000000
@@ -208,20 +208,20 @@ Now, let us list and replay the trace we just recorded:
 We can read from the ~dummy~ frontend that toggling a LED takes about 21µs in debug mode.
 
 * Concepts
-- Source :: a [trace] source is any implementation of [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sources/mod.rs#L20][=trait Source=]] from which decoded trace packets can be pulled via =Iterator::next=.
+- Source :: a [trace] **source** is any implementation of [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sources/mod.rs#L20][=trait Source=]] from which decoded trace packets can be pulled via an iterator using for example [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next][=Iterator::next=]].
   A source can be a live target via =DAPSource= (e.g. an STLink), =TTYSource= (i.e. a ~/dev/tty*~ device), or a file on disk via =FileSource=.
-- Sink :: a [trace] sink is any implementation of =trait Sink= to which decoded trace packets can be [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sinks/mod.rs][=Sink::drain=]]ed (alt. "forwarded").
+- Sink :: a [trace] **sink** is any implementation of =trait Sink= to which decoded trace packets can be [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sinks/mod.rs][=Sink::drain=]]ed (alt. "forwarded").
   A sink can be a file on disk via =FileSink= or a frontend via =FrontendSink=.
 
-~cargo-rtic-scope~  abstracts its operation into a single sink and set of sinks.
+~cargo-rtic-scope~ abstracts its operation into a single sink and set of sinks.
 After these have been contructed along with the [[Host-side information recovery][trace metadata]], packets are continously read from the source and forwarded to all sinks.
 If a sink breaks (i.e. =Sink::drain= yields =Err=) the user is warned.
-If all sinks break, cargo exits non-zero.
-If at least one sink is available, ~cargo-rtic-scope~ continues to trace/replay until =Source::next= yields =None= or =Some(Err)=, or until SIGINT is received.
+If all sinks break, cargo exits with non-zero.
+If at least one sink is available, ~cargo-rtic-scope~ continues to trace/replay until =Source::next= yields =None= or =Some(Err)=, or until a SIGINT signal is received.
 
 * How it works
 ** The ITM/DWT subsystem
-From a target or a file a stream of back-to-back ITM packets are read.
+From a target or a file: a stream of back-to-back ITM packets are read.
 Each packet contains a header and a number of payload bytes.
 Of special interest are exception trace packets:
 #+begin_quote
@@ -255,7 +255,8 @@ These numbers are bound to RTIC tasks.
 
 Henceforth, this document will refer to these exceptions/interrupt numbers as interrupt request (IRQ) numbers.
 
-Software tasks are similarly traced, but come at a cost of a =u32= variable write when entering and exiting the task.
+Software tasks are similarly traced, but come at a cost of a write to a =u32= variable when entering and exiting the task, resulting
+in a cost of two writes.
 This variable is registered as a watch address in the DWT subsystem.
 Any writes to this address are asynchronously intercepted in hardware, and the new value is encapsulated in an ITM packet along with the ID of the DWT comparator.
 
@@ -270,7 +271,7 @@ For example, when executing =cargo rtic-scope --bin blinky [options]=:
    For example, =device = stm32f4::stm32f401=, =binds = SysTick=, and =binds = EXTI1= might be extracted.
    Here, each IRQ label is associated with the RTIC task it is bound to.
 
-   This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to [[RTIC application constrains]].
+   This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to [[RTIC application constraints]].
 3. An adhoc cdylib crate is then built which translates IRQ labels to IRQ numbers.
    ~libadhoc~ will look like the following with the parse information from the previous step:
    #+begin_src rust
@@ -286,7 +287,7 @@ For example, when executing =cargo rtic-scope --bin blinky [options]=:
    #+end_src
    After loading the resultant shared library and calling all functions, a ~IRQ number -> IRQ label -> RTIC task~ map ("task map") is yielded.
 
-Along with the task map, an absolute timestamp is also be calculated for each set of trace packets received.
+Along with the task map, an absolute timestamp is also calculated for each set of trace packets received.
 This is done by sampling the time just before the target is reset and applying an offset based upon the trace clock frequency and local/global timestamps received over ITM.
 This frequency can be set via ~--tpiu-freq~.
 If not set, a ~DataTraceValue~ with a non-zero 4B payload is expected in the trace and interpreted as a =u32= representation of the trace clock frequency.
@@ -299,7 +300,7 @@ This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the 
 If the input buffer of the serial device is filled, packets will be lost or corrupted.
 A warning will be printed before this buffer is overflowed, or if the buffer size cannot be determined.
 
-** RTIC application constrains
+** RTIC application constraints
 At present, the ~device~ argument of the RTIC app macro, i.e. =#[app(device = stm32f4::stm32f401, ...)]=, is interpreted as a crate name and feature combination.
 In this example, ~stm32f4~ is interpreted as the crate name, and ~stm32f401~ as the crate feature when building the adhoc cdylib crate.
 Additionally, the ~Interrupt~ enum of this peripheral access crate is expected at =stm32f4::stm32f401::Interrupt=.
@@ -317,24 +318,23 @@ See [[https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.r
 
 * Frequently asked questions
 - Where are all build artifacts stored? :: Most likely under ~target/~, assuming the current working directory is a crate containing target applications.
-  The target directory can be overridden via =TARGET_DIR= or the =--target-dir= option.
+  The target directory can be overridden via the enviornment variable =TARGET_DIR= or the =--target-dir= option.
   Note that the RTIC application will be rebuilt to this location.
 
-  ~cargo-rtic-scope~ also respecets [[https://doc.rust-lang.org/cargo/reference/config.html][Cargo's configuration system]].
-- Where are all traces saved to? :: Recorded traces are serialized to JSON to ~/path/to/target-dir/rtic-traces~, which means ~target/rtic-traces~ by default.
+  ~cargo-rtic-scope~ also respects [[https://doc.rust-lang.org/cargo/reference/config.html][Cargo's configuration system]].
+- Where are all traces saved to? :: Recorded traces are serialized to JSON and saved to ~/path/to/target-dir/rtic-traces~, which means ~target/rtic-traces~ by default.
   This directory can be overridden via the ~--trace-dir~ option.
   The same option  is used to replay traces located in a non-default location.
 
   *NOTE:* any traces saved to the target directory will be lost on a =cargo clean=.
 
 * Roadmap
-The milestone for a minimum valueable product has been reached as of <2021-07-06 Tue>!
+The milestone for a minimum viable product (MVP) has been reached as of <2021-07-06 Tue>!
 This MVP only traces hardware tasks; software task tracing is not yet fully implemented.
 
 [[https://github.com/rtic-scope/cargo-rtic-scope/milestone/2][Another milestone has been defined for a first stable release]].
 
-* Known issues
-Of note:
+* Known issues (of note)
 - The CMSIS-DAP source (for example STLinks) are not stable. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/18][#18]])
 - Arguments to cargo are not forwarded. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/9][#9]])
 
@@ -344,7 +344,7 @@ Of note:
 TBA
 
 * License
-For non-commercial purposes, RTIC Scope is licensed under both the MIT licence and the Apache Licence (Version 2.0).
+For non-commercial purposes, RTIC Scope is licensed under both the MIT License and the Apache License (Version 2.0).
 For commercial support and alternative licensing, inquire via [[mailto:contact@grepit.se][<contact@grepit.se>]].
 
 RTIC Scope is maintained in cooperation with Grepit AB and Luleå Technical University, Sweden.
@@ -358,5 +358,5 @@ Project maintainer can be reached via email at [[mailto:v@tmplt.dev][<v@tmplt.de
 
 * Footnotes
 
-[fn:1] This received payload is
+[fn:1] This received payload is.
 [fn:2] The overhead will be =u8= unless your application has more than 256 software tasks.
