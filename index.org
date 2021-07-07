@@ -53,7 +53,7 @@ Any other crates listed under the organization but not here are branches of othe
 * Requirements
 ** Hardware
 - A target device with an ARMv7-M MCU.
-- A CMSIS-DAP hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace stream from the target.
+- A hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace stream from the target.
 
 ** Software
 - A Linux-based operating system with a recent Rust toolchain. MSRV TBA.
@@ -335,7 +335,7 @@ This MVP only traces hardware tasks; software task tracing is not yet fully impl
 
 * Known issues
 Of note:
-- The CMSIS-DAP source (for example STLinks) are not stable. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/18][#18]])
+- Usage of an STLink probe source is not stable. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/18][#18]])
 - Arguments to cargo are not forwarded. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/9][#9]])
 
 [[https://github.com/rtic-scope/cargo-rtic-scope/issues][See the issue tracker for all known issues]].
