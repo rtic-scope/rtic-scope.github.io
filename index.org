@@ -1,0 +1,362 @@
+#+TITLE: RTIC Scope
+#+AUTHOR: Viktor Vilhelm Sonesten
+#+EMAIL: vikson-6@student.ltu.se
+
+
+*NOTE:* RTIC Scope and this document are works in progress.
+
+-----
+
+* About
+*RTIC Scope* is a zero-overhead framework for recording and analyzing execution traces from [[https://rtic.rs][RTIC applications]] on ARMv7-M targets.
+The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined by the [[https://developer.arm.com/documentation/ddi0403/ed/][ARMv7-M Architecture Reference Manual]], Appendix D4.
+
+** Features
+The framework is split into three chief components: the canonical backend, the frontend(s), and the target-side tracing crate, ~cortex-m-rtic-trace~.
+
+- The backend :: is a host-side (i.e., the system that programs the target device) application which exposes two operations:
+  - =trace= :: where the target is flashed with the wanted firmware and the execution trace is captured and saved to file.
+  - =replay= :: where previously recorded traces are replayed for postmortem and offline analysis.
+- Frontend(s) :: While tracing and replaying, a trace can be forwarded to a set of frontends via Unix domain sockets where virtually endless analytics can be applied.
+  Consider, for example, a graphical frontend alike an oscilloscope or a logic analyzer, but instead of signals the RTIC tasks and their executation statuses (running, scheduled, preempted) are plotted.
+  A dummy frontend (used for debug and reference purposes) is available out of the box;
+  the dummy prints received events, their absolute timestamps, and the time since the last chunk of events.
+  For example:
+  #+begin_src fundamental
+    dummy: @1625485615052692868 ns (+124999937 ns): [] # the local timestamp clock overflowed, but nothing else happened
+    dummy: @1625485615052769556 ns (+76688 ns): [Task { name: "app::toggle", action: Entered }]
+    dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  #+end_src
+
+  At present, information only flows from the backend to the frontend.
+  This is subject to change.
+  With bidirectional communication a frontend can for example implement a complex hardware-in-the-loop testing suite.
+  Please refer to the [[Roadmap][project roadmap]].
+- The target-side tracing crate :: ~cortex-m-rtic-trace~, is an small auxiliary crate applied to the target application under trace.
+  It only exposes the =#[trace]= macro, which is used to trace RTIC software tasks.
+  While hardware tasks are traced "free of charge" (see [[How it works]]), software tasks are traced by writing to a =u32=-variable twice.
+
+** Project repositories/crates
+The framework is managed under the [[https://github.com/rtic-scope][RTIC Scope organization on GitHub]].
+Below is a list of the chief repositories that constitute the project.
+Any other crates listed under the organization but not here are branches of other repositories pending upstream merge.
+
+- [[https://github.com/rtic-scope/cargo-rtic-scope][cargo-rtic-scope]] :: The RTIC Scope backend which builds the target application, recovers trace information, traces the target, replays traces, etc.
+- [[https://github.com/rtic-scope/cortex-m-rtic-trace][cortex-m-rtic-trace]] :: The ~no_std~ crate used to configure the target for tracing purposes.
+- [[https://github.com/rtic-scope/examples][examples]] :: A set of example target applications where the RTIC Scope framework is applied. These are also [[Examples][documented below]].
+- [[https://github.com/rtic-scope/api][api]] :: The common API used between the RTIC Scope backend and all frontends.
+- [[https://github.com/rtic-scope/frontend-dummy][frontend-dummy]] :: A "noop" frontend implementation that writes received =api::EventChunk= structs to stderr with nanosecond timestamp information.
+- [[https://github.com/rtic-scope/itm-decode][itm-decode]] :: A host-side library that decodes the binary trace stream received from the target to workable Rust structures.
+- [[https://github.com/rtic-scope/rfcs][rfcs]] :: A catch-all meta-repository for discussions that encompasses more than a single repository.
+- [[https://github.com/rtic-scope/rtic-scope.github.io][rtic-scope.github.io]] :: The source code for this page.
+
+* Requirements
+** Hardware
+- A target device with an ARMv7-M MCU.
+- A hardware probe supported by ~probe-rs~ /or/ serial hardware that expose a serial device which reads the trace stream from the target.
+
+** Software
+- A Linux-based operating system with a recent Rust toolchain. MSRV TBA.
+
+* Getting started
+Install the backend and reference frontend via
+#+begin_src fundamental
+  $ cargo install --git https://github.com/rtic-scope/cargo-rtic-scope.git
+  $ cargo install rtic-scope-frontend-dummy
+#+end_src
+
+** Examples
+*** blinky
+Assuming you have a STM32F401 Nucleo-64 at hand, let us trace a simple blinky application:
+#+begin_src fundamental
+  $ git clone https://github.com/rtic-scope/examples.git && cd examples
+  $ cargo rtic-scope trace --bin blinky-noconf --chip stm32f401re --clear-traces --tpiu-freq 16000000
+  "cargo" "build" "--bin" "blinky-noconf" "--message-format=json"
+     Compiling trace-examples v0.1.0 (/home/tmplt/exjobb/trace-examples)
+      Finished dev [unoptimized + debuginfo] target(s) in 1.88s
+  warning: unused import: `trace`
+    --> src/bin/blinky-noconf.rs:10:37
+     |
+  10 |     use cortex_m_rtic_trace::{self, trace};
+     |                                     ^^^^^
+     |
+     = note: `#[warn(unused_imports)]` on by default
+
+  warning: unused import: `cortex_m::asm`
+    --> src/bin/blinky-noconf.rs:12:9
+     |
+  12 |     use cortex_m::asm;
+     |         ^^^^^^^^^^^^^
+
+  warning: variable does not need to be mutable
+    --> src/bin/blinky-noconf.rs:20:13
+     |
+  20 |     fn init(mut ctx: init::Context) -> (init::LateResources, init::Monotonics) {
+     |             ----^^^
+     |             |
+     |             help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` on by default
+
+  warning: 3 warnings emitted
+
+  Flashing /home/tmplt/exjobb/trace-examples/target/thumbv7em-none-eabihf/debug/blinky-noconf...
+  Flashed.
+  Resetting target...
+  Reset.
+  exceptions:
+           SysTick -> ["app", "toggle"]
+  interrupts:
+  software tasks:
+
+  reset timestamp: 2021-07-05 13:46:53.931431868 +02:00
+  trace clock frequency: 16000000 Hz
+
+  Buffer size of source could not be found. Buffer may overflow and corrupt trace stream without warning.
+  Failed to resolve chunk from TimestampedTracePackets { timestamp: Timestamp { base: None, delta: Some(1940184), data_relation: Some(Sync), diverged: false }, packets: [ExceptionTrace { exception: ThreadMode, action: Entered }] }. Reason: Don't know what to do with ThreadMode. Ignoring...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  ^Cdummy: @1625485614177693306 ns (+1625485614177693306 ns): []
+  dummy: @1625485614302693243 ns (+124999937 ns): []
+  dummy: @1625485614427693181 ns (+124999938 ns): []
+  dummy: @1625485614552693118 ns (+124999937 ns): []
+  dummy: @1625485614677693056 ns (+124999938 ns): []
+  dummy: @1625485614802692993 ns (+124999937 ns): []
+  dummy: @1625485614927692931 ns (+124999938 ns): []
+  dummy: @1625485615052692868 ns (+124999937 ns): []
+  dummy: @1625485615052769556 ns (+76688 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485615177790743 ns (+124999937 ns): []
+  dummy: @1625485615302790681 ns (+124999938 ns): []
+  dummy: @1625485615427790618 ns (+124999937 ns): []
+  dummy: @1625485615552790556 ns (+124999938 ns): []
+  dummy: @1625485615677790493 ns (+124999937 ns): []
+  dummy: @1625485615802790431 ns (+124999938 ns): []
+  dummy: @1625485615927790368 ns (+124999937 ns): []
+  dummy: @1625485616052768868 ns (+124978500 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485616052790181 ns (+21313 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485616177790118 ns (+124999937 ns): []
+  dummy: @1625485616302790056 ns (+124999938 ns): []
+  dummy: @1625485616427789993 ns (+124999937 ns): []
+  dummy: @1625485616552789931 ns (+124999938 ns): []
+  dummy: @1625485616677789868 ns (+124999937 ns): []
+  dummy: @1625485616802789806 ns (+124999938 ns): []
+  dummy: @1625485616927789743 ns (+124999937 ns): []
+  dummy: @1625485617052768368 ns (+124978625 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485617052789618 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485617177789556 ns (+124999938 ns): []
+  dummy: @1625485617302789493 ns (+124999937 ns): []
+  dummy: @1625485617427789431 ns (+124999938 ns): []
+  dummy: @1625485617552789368 ns (+124999937 ns): []
+#+end_src
+
+Now, let us list and replay the trace we just recorded:
+#+begin_src fundamental
+  $ cargo rtic-scope replay --bin blinky-noconf --list
+  0       /home/tmplt/exjobb/trace-examples/target/rtic-traces/blinky-noconf-ge9d44c3-2021-07-05T13:46:53.trace
+  $ cargo rtic-scope replay 0 --bin blinky-noconf
+  Replaying /home/tmplt/exjobb/trace-examples/target/rtic-traces/blinky-noconf-ge9d44c3-2021-07-05T13:46:53.trace
+  exceptions:
+           SysTick -> ["app", "toggle"]
+  interrupts:
+  software tasks:
+
+  reset timestamp: 2021-07-05 13:46:53.931431868 +02:00
+  trace clock frequency: 16000000 Hz
+
+  Failed to resolve chunk from TimestampedTracePackets { timestamp: Timestamp { base: None, delta: Some(1940184), data_relation: Some(Sync), diverged: false }, packets: [ExceptionTrace { exception: ThreadMode, action: Entered }] }. Reason: Don't know what to do with ThreadMode. Ignoring...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  Don't know how to convert Sync. Skipping...
+  dummy: @1625485614177693306 ns (+1625485614177693306 ns): []
+  dummy: @1625485614302693243 ns (+124999937 ns): []
+  dummy: @1625485614427693181 ns (+124999938 ns): []
+  dummy: @1625485614552693118 ns (+124999937 ns): []
+  dummy: @1625485614677693056 ns (+124999938 ns): []
+  dummy: @1625485614802692993 ns (+124999937 ns): []
+  dummy: @1625485614927692931 ns (+124999938 ns): []
+  dummy: @1625485615052692868 ns (+124999937 ns): []
+  dummy: @1625485615052769556 ns (+76688 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485615177790743 ns (+124999937 ns): []
+  dummy: @1625485615302790681 ns (+124999938 ns): []
+  dummy: @1625485615427790618 ns (+124999937 ns): []
+  dummy: @1625485615552790556 ns (+124999938 ns): []
+  dummy: @1625485615677790493 ns (+124999937 ns): []
+  dummy: @1625485615802790431 ns (+124999938 ns): []
+  dummy: @1625485615927790368 ns (+124999937 ns): []
+  dummy: @1625485616052768868 ns (+124978500 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485616052790181 ns (+21313 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485616177790118 ns (+124999937 ns): []
+  dummy: @1625485616302790056 ns (+124999938 ns): []
+  dummy: @1625485616427789993 ns (+124999937 ns): []
+  dummy: @1625485616552789931 ns (+124999938 ns): []
+  dummy: @1625485616677789868 ns (+124999937 ns): []
+  dummy: @1625485616802789806 ns (+124999938 ns): []
+  dummy: @1625485616927789743 ns (+124999937 ns): []
+  dummy: @1625485617052768368 ns (+124978625 ns): [Task { name: "app::toggle", action: Entered }]
+  dummy: @1625485617052789618 ns (+21250 ns): [Task { name: "app::toggle", action: Exited }]
+  dummy: @1625485617177789556 ns (+124999938 ns): []
+  dummy: @1625485617302789493 ns (+124999937 ns): []
+  dummy: @1625485617427789431 ns (+124999938 ns): []
+  dummy: @1625485617552789368 ns (+124999937 ns): []
+#+end_src
+
+We can read from the ~dummy~ frontend that toggling a LED takes about 21µs in debug mode.
+
+* Concepts
+- Source :: a [trace] source is any implementation of [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sources/mod.rs#L20][=trait Source=]] from which decoded trace packets can be pulled via =Iterator::next=.
+  A source can be a live target via =DAPSource= (e.g. an STLink), =TTYSource= (i.e. a ~/dev/tty*~ device), or a file on disk via =FileSource=.
+- Sink :: a [trace] sink is any implementation of =trait Sink= to which decoded trace packets can be [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sinks/mod.rs][=Sink::drain=]]ed (alt. "forwarded").
+  A sink can be a file on disk via =FileSink= or a frontend via =FrontendSink=.
+
+~cargo-rtic-scope~  abstracts its operation into a single sink and set of sinks.
+After these have been contructed along with the [[Host-side information recovery][trace metadata]], packets are continously read from the source and forwarded to all sinks.
+If a sink breaks (i.e. =Sink::drain= yields =Err=) the user is warned.
+If all sinks break, cargo exits non-zero.
+If at least one sink is available, ~cargo-rtic-scope~ continues to trace/replay until =Source::next= yields =None= or =Some(Err)=, or until SIGINT is received.
+
+* How it works
+** The ITM/DWT subsystem
+From a target or a file a stream of back-to-back ITM packets are read.
+Each packet contains a header and a number of payload bytes.
+Of special interest are exception trace packets:
+#+begin_quote
+The DWT unit can generate an Exception trace packet whenever then processor enters, exits, or returns to an exception.
+--- Appendix D4.3.2
+#+end_quote
+This packet then contains one of the exception numbers listed in the table below.
+These numbers are bound to RTIC tasks.
+
+#+CAPTION: ARMv7-M Exception numbers
+#+ATTR_HTML: :rules all
+| Exception number | Exception name/label |
+|------------------+----------------------|
+|                1 | Reset                |
+|                2 | NMI                  |
+|                3 | HardFault            |
+|                4 | MemManage            |
+|                5 | BusFault             |
+|             7-10 | Reserved             |
+|               11 | SVCall               |
+|               12 | DebugMonitor         |
+|               13 | Reserved             |
+|               14 | PendSV               |
+|               15 | SysTick              |
+|               16 | External interrupt 0 |
+|                . | .                    |
+|                . | .                    |
+|                . | .                    |
+|           16 + N | External interrupt N |
+|------------------+----------------------|
+
+Henceforth, this document will refer to these exceptions/interrupt numbers as interrupt request (IRQ) numbers.
+
+Software tasks are similarly traced, but come at a cost of a =u32= variable write when entering and exiting the task.
+This variable is registered as a watch address in the DWT subsystem.
+Any writes to this address are asynchronously intercepted in hardware, and the new value is encapsulated in an ITM packet along with the ID of the DWT comparator.
+
+** Host-side information recovery
+The received IRQ numbers in a packet must be associated back to the correct RTIC tasks.
+This is done in a preparatory step before the target is flashed and traced.
+For example, when executing =cargo rtic-scope --bin blinky [options]=:
+1. ~blinky~ is build via a regular =cargo build --bin blinky=.
+2. The RTIC application declaration, =#[app(...)] mod app {...}=, is parsed from ~blinky~'s source code.
+   From this declaration, the =#[app(device = ...)]= argument is extracted along with the IRQ label from each =#[task(binds = ...)]= macro occurance.
+   Additionally, software tasks traced using the =#[trace]= macro are enumerated and mapped.
+   For example, =device = stm32f4::stm32f401=, =binds = SysTick=, and =binds = EXTI1= might be extracted.
+   Here, each IRQ label is associated with the RTIC task it is bound to.
+
+   This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to [[RTIC application constrains]].
+3. An adhoc cdylib crate is then built which translates IRQ labels to IRQ numbers.
+   ~libadhoc~ will look like the following with the parse information from the previous step:
+   #+begin_src rust
+     use stm32f4::stm32f401::Interrupt;
+
+     // Only external interrupts need be written here.
+     // Exceptions-bound tasks are resolved using the table above.
+
+     #[no_mangle]
+     pub extern fn rtic_scope_func_EXTI1() -> u8 {
+         Interrupt::EXTI1.nr()
+     }
+   #+end_src
+   After loading the resultant shared library and calling all functions, a ~IRQ number -> IRQ label -> RTIC task~ map ("task map") is yielded.
+
+Along with the task map, an absolute timestamp is also be calculated for each set of trace packets received.
+This is done by sampling the time just before the target is reset and applying an offset based upon the trace clock frequency and local/global timestamps received over ITM.
+This frequency can be set via ~--tpiu-freq~.
+If not set, a ~DataTraceValue~ with a non-zero 4B payload is expected in the trace and interpreted as a =u32= representation of the trace clock frequency.
+Only the first packet of this type is intercepted and consumed.
+
+This ~(task map, reset timestamp, trace clock frequency)~ tuple constitutes the metadata of a trace, and is saved as a header to all trace files.
+
+* Limitations
+** Dropped ITM packets
+If the input buffer of the serial device is filled, packets will be lost or corrupted.
+A warning will be printed before this buffer is overflowed, or if the buffer size cannot be determined.
+
+** RTIC application constrains
+At present, the ~device~ argument of the RTIC app macro, i.e. =#[app(device = stm32f4::stm32f401, ...)]=, is interpreted as a crate name and feature combination.
+In this example, ~stm32f4~ is interpreted as the crate name, and ~stm32f401~ as the crate feature when building the adhoc cdylib crate.
+Additionally, the ~Interrupt~ enum of this peripheral access crate is expected at =stm32f4::stm32f401::Interrupt=.
+[[https://github.com/rtic-scope/cargo-rtic-scope/issues/22][This contraint is planned to be lifted]].
+See [[https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.rs][the examples]] for how to write an RTIC Scope-compliant application.
+
+** Target-side overhead
+- If ~--tpiu-freq~ is not set, it is up to the target application to wholly configure tracing and send the correct trace clock frequency value.
+  See [[https://github.com/rtic-scope/cargo-rtic-scope/issues/20][#20]].
+- When tracing software tasks:
+  - a DWT comparator must be effectively consumed.
+    Additionally, the ID of the comparator must be communicated to the backend by writing the value to a watch address.
+  - When entering/exiting a software task marked for tracing, a =u8= (at minimum) must be written to a watch addess;
+    a =u32= in the worst case (depending on the number of tracing software tasks[fn:2]).
+
+* Frequently asked questions
+- Where are all build artifacts stored? :: Most likely under ~target/~, assuming the current working directory is a crate containing target applications.
+  The target directory can be overridden via =TARGET_DIR= or the =--target-dir= option.
+  Note that the RTIC application will be rebuilt to this location.
+
+  ~cargo-rtic-scope~ also respecets [[https://doc.rust-lang.org/cargo/reference/config.html][Cargo's configuration system]].
+- Where are all traces saved to? :: Recorded traces are serialized to JSON to ~/path/to/target-dir/rtic-traces~, which means ~target/rtic-traces~ by default.
+  This directory can be overridden via the ~--trace-dir~ option.
+  The same option  is used to replay traces located in a non-default location.
+
+  *NOTE:* any traces saved to the target directory will be lost on a =cargo clean=.
+
+* Roadmap
+The milestone for a minimum valueable product has been reached as of <2021-07-06 Tue>!
+This MVP only traces hardware tasks; software task tracing is not yet fully implemented.
+
+[[https://github.com/rtic-scope/cargo-rtic-scope/milestone/2][Another milestone has been defined for a first stable release]].
+
+* Known issues
+Of note:
+- Usage of an STLink probe source is not stable. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/18][#18]])
+- Arguments to cargo are not forwarded. ([[https://github.com/rtic-scope/cargo-rtic-scope/issues/9][#9]])
+
+[[https://github.com/rtic-scope/cargo-rtic-scope/issues][See the issue tracker for all known issues]].
+
+* Publications
+TBA
+
+* License
+For non-commercial purposes, RTIC Scope is licensed under both the MIT licence and the Apache Licence (Version 2.0).
+For commercial support and alternative licensing, inquire via [[mailto:contact@grepit.se][<contact@grepit.se>]].
+
+RTIC Scope is maintained in cooperation with Grepit AB and Luleå Technical University, Sweden.
+
+* Contact, bug reports and contributions
+Bug reports and contributions are welcome. Please file it under the [[Project repositories/crates][relevant repository]].
+
+Project maintainer can be reached via email at [[mailto:v@tmplt.dev][<v@tmplt.dev>]].
+
+-----
+
+* Footnotes
+
+[fn:1] This received payload is
+[fn:2] The overhead will be =u8= unless your application has more than 256 software tasks.
