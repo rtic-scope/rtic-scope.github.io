@@ -299,7 +299,7 @@ A warning will be printed before this buffer is overflowed, or if the buffer siz
 
 ** RTIC application constrains
 At present, the ~device~ argument of the RTIC app macro, i.e. =#[app(device = stm32f4::stm32f401, ...)]=, is interpreted as a crate name and feature combination.
-In this example, ~stm32f4~ is interpreted as the crate name, and ~stm32f401~ as the crate feature when building the adhoc cdylib crate.
+In this example, ~stm32f4~ is interpreted as the crate name, and ~stm32f401~ as the crate feature when recovering information.
 Additionally, the ~Interrupt~ enum of this peripheral access crate is expected at =stm32f4::stm32f401::Interrupt=.
 [[https://github.com/rtic-scope/cargo-rtic-scope/issues/22][This contraint is planned to be lifted]].
 See [[https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.rs][the examples]] for how to write an RTIC Scope-compliant application.
