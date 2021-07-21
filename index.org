@@ -2,7 +2,6 @@
 #+AUTHOR: Viktor Vilhelm Sonesten
 #+EMAIL: vikson-6@student.ltu.se
 
-
 *NOTE:* RTIC Scope and this document are works in progress.
 
 -----
