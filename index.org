@@ -206,9 +206,9 @@ Now, let us list and replay the trace we just recorded:
 We can read from the ~dummy~ frontend that toggling a LED takes about 21µs in debug mode.
 
 * Concepts
-- Source :: a [trace] *source* is any implementation of [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sources/mod.rs#L20][=trait Source=]] from which decoded trace packets can be pulled via =Iterator::next=.
+- Source :: a (trace) *source* is any implementation of [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sources/mod.rs#L20][=trait Source=]] from which decoded trace packets can be pulled via =Iterator::next=.
   A source can be a live target via =DAPSource= (e.g. an STLink), =TTYSource= (i.e. a ~/dev/tty*~ device), or a file on disk via =FileSource=.
-- Sink :: a [trace] *sink* is any implementation of =trait Sink= to which decoded trace packets can be [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sinks/mod.rs][=Sink::drain=]]ed (alt. "forwarded").
+- Sink :: a (trace) *sink* is any implementation of =trait Sink= to which decoded trace packets can be [[https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sinks/mod.rs][=Sink::drain=]]ed (alt. "forwarded").
   A sink can be a file on disk via =FileSink= or a frontend via =FrontendSink=.
 
 ~cargo-rtic-scope~ abstracts its operation by utilizing a single source and set of sinks.
