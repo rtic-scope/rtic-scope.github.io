@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2021-07-24 Sat 00:12 -->
+<!-- 2021-07-30 Fri 09:32 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>RTIC Scope</title>
@@ -247,47 +247,47 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#orgadd38ad">1. About</a>
+<li><a href="#orgceb8ec0">1. About</a>
 <ul>
-<li><a href="#org23255d2">1.1. Features</a></li>
-<li><a href="#org5995860">1.2. Project repositories/crates</a></li>
+<li><a href="#org3081ef9">1.1. Features</a></li>
+<li><a href="#orgdeb3d18">1.2. Project repositories/crates</a></li>
 </ul>
 </li>
-<li><a href="#orgd01f69e">2. Requirements</a>
+<li><a href="#org6661ea8">2. Requirements</a>
 <ul>
-<li><a href="#org4803f03">2.1. Hardware</a></li>
-<li><a href="#org003680d">2.2. Software</a></li>
+<li><a href="#orgf22e5f4">2.1. Hardware</a></li>
+<li><a href="#orgb12a209">2.2. Software</a></li>
 </ul>
 </li>
-<li><a href="#org09be389">3. Getting started</a>
+<li><a href="#orgf4f84d9">3. Getting started</a>
 <ul>
-<li><a href="#org718b105">3.1. Examples</a>
+<li><a href="#orgba4ac29">3.1. Examples</a>
 <ul>
-<li><a href="#org25b2532">3.1.1. blinky</a></li>
+<li><a href="#org4f45675">3.1.1. blinky</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#orgd283a18">4. Concepts</a></li>
-<li><a href="#org734dc17">5. How it works</a>
+<li><a href="#org52c0226">4. Concepts</a></li>
+<li><a href="#orgc3247c7">5. How it works</a>
 <ul>
-<li><a href="#org8d2d853">5.1. The ITM/DWT subsystem</a></li>
-<li><a href="#orgc999d7b">5.2. Host-side information recovery</a></li>
+<li><a href="#orgf4b00ba">5.1. The ITM/DWT subsystem</a></li>
+<li><a href="#org4f3e237">5.2. Host-side information recovery</a></li>
 </ul>
 </li>
-<li><a href="#org9ce4b4a">6. Limitations</a>
+<li><a href="#org47b9c1e">6. Limitations</a>
 <ul>
-<li><a href="#org9a06bec">6.1. Dropped ITM packets</a></li>
-<li><a href="#orge366da9">6.2. RTIC application constrains</a></li>
-<li><a href="#orgc0e924f">6.3. Target-side overhead</a></li>
+<li><a href="#org8b3568d">6.1. Dropped ITM packets</a></li>
+<li><a href="#org2a6084f">6.2. RTIC application constrains</a></li>
+<li><a href="#orgf295a89">6.3. Target-side overhead</a></li>
 </ul>
 </li>
-<li><a href="#orgc6d88e7">7. Frequently asked questions</a></li>
-<li><a href="#orgcdb179d">8. Roadmap</a></li>
-<li><a href="#orgc79ca6f">9. Known issues (of note)</a></li>
-<li><a href="#org11b152c">10. Publications</a></li>
-<li><a href="#org55797e3">11. License</a></li>
-<li><a href="#orgdb876a4">12. Contact, bug reports and contributions</a></li>
+<li><a href="#org7e10abc">7. Frequently asked questions</a></li>
+<li><a href="#org2ba5c17">8. Roadmap</a></li>
+<li><a href="#org56141a5">9. Known issues (of note)</a></li>
+<li><a href="#orgbcca00a">10. Publications</a></li>
+<li><a href="#org4ac7dc2">11. License</a></li>
+<li><a href="#org1f02d3c">12. Contact, bug reports and contributions</a></li>
 </ul>
 </div>
 </div>
@@ -297,8 +297,8 @@ for the JavaScript code in this tag.
 
 <hr />
 
-<div id="outline-container-orgadd38ad" class="outline-2">
-<h2 id="orgadd38ad"><span class="section-number-2">1</span> About</h2>
+<div id="outline-container-orgceb8ec0" class="outline-2">
+<h2 id="orgceb8ec0"><span class="section-number-2">1</span> About</h2>
 <div class="outline-text-2" id="text-1">
 <p>
 <b>RTIC Scope</b> is a zero-overhead framework for recording and analyzing execution traces from <a href="https://rtic.rs">RTIC applications</a> on ARMv7-M targets.
@@ -306,8 +306,8 @@ The lack of overhead is achieved by exploiting the ITM/DWT subsystem as defined 
 </p>
 </div>
 
-<div id="outline-container-org23255d2" class="outline-3">
-<h3 id="org23255d2"><span class="section-number-3">1.1</span> Features</h3>
+<div id="outline-container-org3081ef9" class="outline-3">
+<h3 id="org3081ef9"><span class="section-number-3">1.1</span> Features</h3>
 <div class="outline-text-3" id="text-1-1">
 <p>
 The framework is split into three main components: the canonical backend, the frontend(s), and the target-side tracing crate, <code>cortex-m-rtic-trace</code>.
@@ -336,17 +336,17 @@ dummy: @1625485615052790806 ns (+21250 ns): [Task { name: "app::toggle", action:
 <p>
 At present, information only flows from the backend to the specified frontend, via <code>--frontend</code>.
 In the future, bidirectional communication will be possible, enabling a frontend to implement a complex hardware-in-the-loop testing suite, for example.
-Please refer to the <a href="#orgcdb179d">project roadmap</a> for future prospects.
+Please refer to the <a href="#org2ba5c17">project roadmap</a> for future prospects.
 </p></dd>
 <dt>The target-side tracing crate</dt><dd><code>cortex-m-rtic-trace</code>, is a small auxiliary crate applied to the target application under trace.
 It only exposes the <code>#[trace]</code> macro, which is used to trace RTIC software tasks.
-NOTE: While hardware tasks are traced "free of charge" (see <a href="#org734dc17">5</a>), software tasks are traced by writing to a <code>u32</code>-variable twice.</dd>
+NOTE: While hardware tasks are traced "free of charge" (see <a href="#orgc3247c7">5</a>), software tasks are traced by writing to a <code>u32</code>-variable twice.</dd>
 </dl>
 </div>
 </div>
 
-<div id="outline-container-org5995860" class="outline-3">
-<h3 id="org5995860"><span class="section-number-3">1.2</span> Project repositories/crates</h3>
+<div id="outline-container-orgdeb3d18" class="outline-3">
+<h3 id="orgdeb3d18"><span class="section-number-3">1.2</span> Project repositories/crates</h3>
 <div class="outline-text-3" id="text-1-2">
 <p>
 The framework is managed under the <a href="https://github.com/rtic-scope">RTIC Scope organization on GitHub</a>.
@@ -357,7 +357,7 @@ Any other crates listed under the organization but not here are branches of othe
 <dl class="org-dl">
 <dt><a href="https://github.com/rtic-scope/cargo-rtic-scope">cargo-rtic-scope</a></dt><dd>The RTIC Scope backend which builds the target application, recovers trace information, traces the target, replays traces, etc.</dd>
 <dt><a href="https://github.com/rtic-scope/cortex-m-rtic-trace">cortex-m-rtic-trace</a></dt><dd><code>no_std</code> crate used to configure the target device for tracing purposes.</dd>
-<dt><a href="https://github.com/rtic-scope/examples">examples</a></dt><dd>A set of example target applications where the RTIC Scope framework is applied. These are also <a href="#org718b105">documented below</a>.</dd>
+<dt><a href="https://github.com/rtic-scope/examples">examples</a></dt><dd>A set of example target applications where the RTIC Scope framework is applied. These are also <a href="#orgba4ac29">documented below</a>.</dd>
 <dt><a href="https://github.com/rtic-scope/api">api</a></dt><dd>The common API used between the RTIC Scope backend and all frontends.</dd>
 <dt><a href="https://github.com/rtic-scope/frontend-dummy">frontend-dummy</a></dt><dd>A "noop" frontend implementation that writes received <code>api::EventChunk</code> structs to stderr with nanosecond timestamp information.</dd>
 <dt><a href="https://github.com/rtic-scope/itm-decode">itm-decode</a></dt><dd>A host-side library that decodes the binary trace stream received from the target to workable Rust structures.</dd>
@@ -368,12 +368,12 @@ Any other crates listed under the organization but not here are branches of othe
 </div>
 </div>
 
-<div id="outline-container-orgd01f69e" class="outline-2">
-<h2 id="orgd01f69e"><span class="section-number-2">2</span> Requirements</h2>
+<div id="outline-container-org6661ea8" class="outline-2">
+<h2 id="org6661ea8"><span class="section-number-2">2</span> Requirements</h2>
 <div class="outline-text-2" id="text-2">
 </div>
-<div id="outline-container-org4803f03" class="outline-3">
-<h3 id="org4803f03"><span class="section-number-3">2.1</span> Hardware</h3>
+<div id="outline-container-orgf22e5f4" class="outline-3">
+<h3 id="orgf22e5f4"><span class="section-number-3">2.1</span> Hardware</h3>
 <div class="outline-text-3" id="text-2-1">
 <ul class="org-ul">
 <li>A target device with an ARMv7-M MCU.</li>
@@ -382,8 +382,8 @@ Any other crates listed under the organization but not here are branches of othe
 </div>
 </div>
 
-<div id="outline-container-org003680d" class="outline-3">
-<h3 id="org003680d"><span class="section-number-3">2.2</span> Software</h3>
+<div id="outline-container-orgb12a209" class="outline-3">
+<h3 id="orgb12a209"><span class="section-number-3">2.2</span> Software</h3>
 <div class="outline-text-3" id="text-2-2">
 <ul class="org-ul">
 <li>A Linux-based operating system with a recent Rust toolchain. Minimum supported Rust version TBA.</li>
@@ -392,8 +392,8 @@ Any other crates listed under the organization but not here are branches of othe
 </div>
 </div>
 
-<div id="outline-container-org09be389" class="outline-2">
-<h2 id="org09be389"><span class="section-number-2">3</span> Getting started</h2>
+<div id="outline-container-orgf4f84d9" class="outline-2">
+<h2 id="orgf4f84d9"><span class="section-number-2">3</span> Getting started</h2>
 <div class="outline-text-2" id="text-3">
 <p>
 Install the backend and reference frontend via
@@ -405,48 +405,42 @@ $ cargo install rtic-scope-frontend-dummy
 </div>
 </div>
 
-<div id="outline-container-org718b105" class="outline-3">
-<h3 id="org718b105"><span class="section-number-3">3.1</span> Examples</h3>
+<div id="outline-container-orgba4ac29" class="outline-3">
+<h3 id="orgba4ac29"><span class="section-number-3">3.1</span> Examples</h3>
 <div class="outline-text-3" id="text-3-1">
 </div>
-<div id="outline-container-org25b2532" class="outline-4">
-<h4 id="org25b2532"><span class="section-number-4">3.1.1</span> blinky</h4>
+<div id="outline-container-org4f45675" class="outline-4">
+<h4 id="org4f45675"><span class="section-number-4">3.1.1</span> blinky</h4>
 <div class="outline-text-4" id="text-3-1-1">
 <p>
 Assuming you have a STM32F401 Nucleo-64 at hand, let us get a trace from a simple blinking LED application:
 </p>
 <div class="org-src-container">
 <pre class="src src-fundamental">$ git clone https://github.com/rtic-scope/examples.git &amp;&amp; cd examples
+$ # Note content of package/workspace metadata table
+$ cargo metadata --format-version 1 | jq .metadata
+{
+  "rtic-scope": {
+    "interrupt_path": "stm32f4::stm32f401::Interrupt",
+    "pac": "stm32f4",
+    "pac_features": [
+      "stm32f401"
+    ]
+  }
+}
+$ cargo metadata --format-version 1 | jq '.packages[] | select(.name == "trace-examples") | .metadata'
+{
+  "rtic-scope": {
+    "interrupt_path": "stm32f4::stm32f401::Interrupt",
+    "pac": "stm32f4",
+    "pac_features": [
+      "stm32f401"
+    ]
+  }
+}
 $ cargo rtic-scope trace --bin blinky-noconf --chip stm32f401re --clear-traces --tpiu-freq 16000000
-"cargo" "build" "--bin" "blinky-noconf" "--message-format=json"
    Compiling trace-examples v0.1.0 (/home/tmplt/exjobb/trace-examples)
     Finished dev [unoptimized + debuginfo] target(s) in 1.88s
-warning: unused import: `trace`
-  --&gt; src/bin/blinky-noconf.rs:10:37
-   |
-10 |     use cortex_m_rtic_trace::{self, trace};
-   |                                     ^^^^^
-   |
-   = note: `#[warn(unused_imports)]` on by default
-
-warning: unused import: `cortex_m::asm`
-  --&gt; src/bin/blinky-noconf.rs:12:9
-   |
-12 |     use cortex_m::asm;
-   |         ^^^^^^^^^^^^^
-
-warning: variable does not need to be mutable
-  --&gt; src/bin/blinky-noconf.rs:20:13
-   |
-20 |     fn init(mut ctx: init::Context) -&gt; (init::LateResources, init::Monotonics) {
-   |             ----^^^
-   |             |
-   |             help: remove this `mut`
-   |
-   = note: `#[warn(unused_mut)]` on by default
-
-warning: 3 warnings emitted
-
 Flashing /home/tmplt/exjobb/trace-examples/target/thumbv7em-none-eabihf/debug/blinky-noconf...
 Flashed.
 Resetting target...
@@ -564,19 +558,19 @@ We can read from the <code>dummy</code> frontend that toggling a LED takes about
 </div>
 </div>
 
-<div id="outline-container-orgd283a18" class="outline-2">
-<h2 id="orgd283a18"><span class="section-number-2">4</span> Concepts</h2>
+<div id="outline-container-org52c0226" class="outline-2">
+<h2 id="org52c0226"><span class="section-number-2">4</span> Concepts</h2>
 <div class="outline-text-2" id="text-4">
 <dl class="org-dl">
 <dt>Source</dt><dd>a (trace) <b>source</b> is any implementation of <a href="https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sources/mod.rs#L20"><code>trait Source</code></a> from which decoded trace packets can be pulled via <code>Iterator::next</code>.
-A source can be a live target via <code>DAPSource</code> (e.g. an STLink), <code>TTYSource</code> (i.e. a <code>/dev/tty*</code> device), or a file on disk via <code>FileSource</code>.</dd>
+A source can be a live target via <code>DAPSource</code> (e.g. an STLink, hs-probe, etc.), <code>TTYSource</code> (i.e. a <code>/dev/tty*</code> device), or a file on disk via <code>FileSource</code>.</dd>
 <dt>Sink</dt><dd>a (trace) <b>sink</b> is any implementation of <code>trait Sink</code> to which decoded trace packets can be <a href="https://github.com/rtic-scope/cargo-rtic-scope/blob/master/src/sinks/mod.rs"><code>Sink::drain</code></a>ed (alt. "forwarded").
 A sink can be a file on disk via <code>FileSink</code> or a frontend via <code>FrontendSink</code>.</dd>
 </dl>
 
 <p>
 <code>cargo-rtic-scope</code> abstracts its operation by utilizing a single source and set of sinks.
-After these have been contructed along with the <a href="#orgc999d7b">trace metadata</a>, packets are continously read from the source and forwarded to all sinks.
+After these have been contructed along with the <a href="#org4f3e237">trace metadata</a>, packets are continously read from the source and forwarded to all sinks.
 If a sink breaks (i.e. <code>Sink::drain</code> yields <code>Err</code>) the user is warned.
 If all sinks break, cargo exits with non-zero.
 If at least one sink is available, <code>cargo-rtic-scope</code> continues to trace/replay until <code>Source::next</code> yields <code>None</code> or <code>Some(Err)</code>, or until a SIGINT signal is received.
@@ -584,15 +578,15 @@ If at least one sink is available, <code>cargo-rtic-scope</code> continues to tr
 </div>
 </div>
 
-<div id="outline-container-org734dc17" class="outline-2">
-<h2 id="org734dc17"><span class="section-number-2">5</span> How it works</h2>
+<div id="outline-container-orgc3247c7" class="outline-2">
+<h2 id="orgc3247c7"><span class="section-number-2">5</span> How it works</h2>
 <div class="outline-text-2" id="text-5">
 </div>
-<div id="outline-container-org8d2d853" class="outline-3">
-<h3 id="org8d2d853"><span class="section-number-3">5.1</span> The ITM/DWT subsystem</h3>
+<div id="outline-container-orgf4b00ba" class="outline-3">
+<h3 id="orgf4b00ba"><span class="section-number-3">5.1</span> The ITM/DWT subsystem</h3>
 <div class="outline-text-3" id="text-5-1">
 <p>
-A stream of back-to-back ITM packets are read from a target or a file.
+A stream of back-to-back ITM packets are read from a properly configured target or a file.
 Each packet contains a header and a number of payload bytes.
 Of special interest are exception trace packets:
 </p>
@@ -716,33 +710,73 @@ Any writes to this address are asynchronously intercepted in hardware, and the n
 </div>
 </div>
 
-<div id="outline-container-orgc999d7b" class="outline-3">
-<h3 id="orgc999d7b"><span class="section-number-3">5.2</span> Host-side information recovery</h3>
+<div id="outline-container-org4f3e237" class="outline-3">
+<h3 id="org4f3e237"><span class="section-number-3">5.2</span> Host-side information recovery</h3>
 <div class="outline-text-3" id="text-5-2">
 <p>
 The received IRQ numbers in a packet must be associated back to the correct RTIC tasks.
 This is done in a preparatory step before the target is flashed and traced.
-For example, when executing <code>cargo rtic-scope --bin blinky [options]</code>:
+For example, when executing <code>cargo rtic-scope --bin blinky [options...]</code>:
 </p>
 <ol class="org-ol">
-<li><code>blinky</code> is build via a regular <code>cargo build --bin blinky</code>.</li>
+<li><p>
+Device-specific information is read from the <a href="https://doc.rust-lang.org/cargo/reference/manifest.html#the-metadata-table">crate's manifest metadata table</a>.
+This table is expected to contain three fields which is otherwise non-trivial to resolve from <code>blinky</code>'s source file alone.
+For example:
+</p>
+<div class="org-src-container">
+<pre class="src src-conf">[package.metadata.rtic-scope]
+# The name of the used peripheral access crate (PAC)
+pac = "stm32f4"
+# Required features of the above PAC, if any
+pac_features = ["stm32f401"]
+# The full path to the enum structure containing the exceptions and interrupts, in the PAC, used in the crate
+interrupt_path = "stm32f4::stm32f401::Interrupt"
+</pre>
+</div>
+<p>
+<code>workspace.metadata.rtic-scope</code> is used as fallback if package-level metadata is not specified.
+It is up to the end-user to verify this metadata.
+In the worst case that the metadata is incorrect but still builds and maps (step 3-4), incorrect data will be forwarded to specified sinks.
+</p></li>
+<li><code>blinky</code> is build via a regular <code>cargo build --bin blinky</code> and it's target directory is reused for intermediate artifacts.</li>
 <li><p>
 The RTIC application declaration, <code>#[app(...)] mod app {...}</code>, is parsed from <code>blinky</code>'s source code.
-From this declaration, the <code>#[app(device = ...)]</code> argument is extracted along with the IRQ label from each <code>#[task(binds = ...)]</code> macro occurance.
-Additionally, software tasks traced using the <code>#[trace]</code> macro are enumerated and mapped.
-For example, <code>device = stm32f4::stm32f401</code>, <code>binds = SysTick</code>, and <code>binds = EXTI1</code> might be extracted.
+From this declaration, IRQ labels are extracted from each <code>#[task(binds = ...)]</code> macro occurance,
+and software tasks are parsed and mapped from each <code>#[trace]</code>.
+For example, <code>binds = SysTick</code>, and <code>binds = EXTI1</code> might be extracted.
 Here, each IRQ label is associated with the RTIC task it is bound to.
 </p>
 
 <p>
-This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to <a href="#orge366da9">6.2</a>.
+This parsing step places some restrictions on how the source code for an RTIC application can be written. Refer to <a href="#org2a6084f">6.2</a>.
 </p></li>
 <li><p>
-An shared object file is then built which translates IRQ labels to IRQ numbers.
-The source code for this object will look like the following with the information from the previous step:
+A shared object file is then built which translates IRQ labels to IRQ numbers by help of the metadata acquired in step 1.
+The source code for this object crate may look like the following:
 </p>
 <div class="org-src-container">
-<pre class="src src-rust">use stm32f4::stm32f401::Interrupt;
+<pre class="src src-conf"># generated Cargo.toml
+[package]
+name = "adhoc"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+crate_type = ["cdylib"]
+
+[workspace]
+# empty workspace, so that cargo does not think this crate belong to the
+# firmware which target/ we are in.
+
+[dependencies]
+cortex-m = "0.7"
+stm32f4 = { version = "", features = ["stm32f401"] }
+</pre>
+</div>
+<div class="org-src-container">
+<pre class="src src-rust">// generated lib.rs
+use stm32f4::stm32f401::Interrupt;
 
 // Only external interrupts need be written here.
 // Exceptions-bound tasks are resolved using the table above.
@@ -759,11 +793,10 @@ After loading the resultant shared library and calling all functions, a <code>IR
 </ol>
 
 <p>
-Along with the task map, an absolute timestamp is also calculated for each set of trace packets received.
+This task map is then used to decorate ITM packets with RTIC-specific data.
+An absolute timestamp is also calculated for each set of trace packets received.
 This is done by sampling the time just before the target is reset and applying an offset based upon the trace clock frequency and local/global timestamps received over ITM.
-This frequency can be set via <code>--tpiu-freq</code>.
-If not set, a <code>DataTraceValue</code> with a non-zero 4B payload is expected in the trace and interpreted as a <code>u32</code> representation of the trace clock frequency.
-Only the first packet of this type is intercepted and consumed.
+This frequency must be set via <code>--tpiu-freq</code>.
 </p>
 
 <p>
@@ -773,68 +806,75 @@ This <code>(task map, reset timestamp, trace clock frequency)</code> tuple const
 </div>
 </div>
 
-<div id="outline-container-org9ce4b4a" class="outline-2">
-<h2 id="org9ce4b4a"><span class="section-number-2">6</span> Limitations</h2>
+<div id="outline-container-org47b9c1e" class="outline-2">
+<h2 id="org47b9c1e"><span class="section-number-2">6</span> Limitations</h2>
 <div class="outline-text-2" id="text-6">
 </div>
-<div id="outline-container-org9a06bec" class="outline-3">
-<h3 id="org9a06bec"><span class="section-number-3">6.1</span> Dropped ITM packets</h3>
+<div id="outline-container-org8b3568d" class="outline-3">
+<h3 id="org8b3568d"><span class="section-number-3">6.1</span> Dropped ITM packets</h3>
 <div class="outline-text-3" id="text-6-1">
 <p>
-If the input buffer of the serial device is filled, packets will be lost or corrupted.
-A warning will be printed before this buffer is overflowed, or if the buffer size cannot be determined.
+If the input buffer of the source is filled (i.e. that of a serial device or the internal buffer of a probe) packets will be lost or corrupted.
+A warning will be printed once before this buffer is overflowed, or if the buffer size cannot be determined.
 </p>
 </div>
 </div>
 
-<div id="outline-container-orge366da9" class="outline-3">
-<h3 id="orge366da9"><span class="section-number-3">6.2</span> RTIC application constrains</h3>
+<div id="outline-container-org2a6084f" class="outline-3">
+<h3 id="org2a6084f"><span class="section-number-3">6.2</span> RTIC application constrains</h3>
 <div class="outline-text-3" id="text-6-2">
 <p>
-At present, the <code>device</code> argument of the RTIC app macro, i.e. <code>#[app(device = stm32f4::stm32f401, ...)]</code>, is interpreted as a crate name and feature combination.
-In this example, <code>stm32f4</code> is interpreted as the crate name, and <code>stm32f401</code> as the crate feature when recovering information.
-Additionally, the <code>Interrupt</code> enum of this peripheral access crate is expected at <code>stm32f4::stm32f401::Interrupt</code>.
-<a href="https://github.com/rtic-scope/cargo-rtic-scope/issues/22">This contraint is planned to be lifted</a>.
-See <a href="https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.rs">the examples</a> for how to write an RTIC Scope-compliant application.
+During source code parsing, an <code>#[app(...)] mod app { ... }</code> is searched for.
+When parsing the source code, the file is tokenized, and tokens are skipped until <code>#[app(...)]</code> is encountered.
+This <code>#[app(...)]</code> macro <code>TokenTree::Group</code> is then passed to <a href="https://docs.rs/rtic-syntax/0.5.0-alpha.4/rtic_syntax/fn.parse2.html"><code>rtic_syntax::parse2</code></a>.
+This limits how an RTIC application can be written to some degree.
+An example RTIC Scope-compliant application is then:
+</p>
+<div class="org-src-container">
+<pre class="src src-rust">// other imports...
+
+use rtic::app;
+#[app(...)]
+mod app {
+    // whole application declared here
+}
+
+// any other code...
+</pre>
+</div>
+<p>
+See <a href="https://github.com/rtic-scope/examples/blob/master/src/bin/blinky-noconf.rs">the examples</a> for more examples of RTIC Scope-compliant applications.
 </p>
 </div>
 </div>
 
-<div id="outline-container-orgc0e924f" class="outline-3">
-<h3 id="orgc0e924f"><span class="section-number-3">6.3</span> Target-side overhead</h3>
+<div id="outline-container-orgf295a89" class="outline-3">
+<h3 id="orgf295a89"><span class="section-number-3">6.3</span> Target-side overhead</h3>
 <div class="outline-text-3" id="text-6-3">
-<ul class="org-ul">
-<li>If <code>--tpiu-freq</code> is not set, it is up to the target application to wholly configure tracing and send the correct trace clock frequency value.
-See <a href="https://github.com/rtic-scope/cargo-rtic-scope/issues/20">#20</a>.</li>
-<li>When tracing software tasks:
+<p>
+When tracing software tasks:
+</p>
 <ul class="org-ul">
 <li>a DWT comparator must be effectively consumed.
 Additionally, the ID of the comparator must be communicated to the backend by writing the value to a watch address.</li>
 <li>When entering/exiting a software task marked for tracing, a <code>u8</code> (at minimum) must be written to a watch addess;
 a <code>u32</code> in the worst case (depending on the number of tracing software tasks<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>).</li>
-</ul></li>
 </ul>
 </div>
 </div>
 </div>
 
-<div id="outline-container-orgc6d88e7" class="outline-2">
-<h2 id="orgc6d88e7"><span class="section-number-2">7</span> Frequently asked questions</h2>
+<div id="outline-container-org7e10abc" class="outline-2">
+<h2 id="org7e10abc"><span class="section-number-2">7</span> Frequently asked questions</h2>
 <div class="outline-text-2" id="text-7">
 <dl class="org-dl">
-<dt>Where are all build artifacts stored?</dt><dd><p>
-Most likely under <code>target/</code>, assuming the current working directory is a crate containing target applications.
-The target directory can be overridden via the environmental variable <code>TARGET_DIR</code> or the <code>--target-dir</code> option.
-Note that the RTIC application will be rebuilt to this location.
-</p>
+<dt>Where are all build artifacts stored?</dt><dd>All intermediate RTIC Scope artifacts are stored under <code>$(cargo metadata | jq .target_directory)/cargo-rtic-trace-libadhoc/</code>.
+This is under the same target directory as the built application.</dd>
 
-<p>
-<code>cargo-rtic-scope</code> also respects <a href="https://doc.rust-lang.org/cargo/reference/config.html">Cargo's configuration system</a>.
-</p></dd>
 <dt>Where are all traces saved to?</dt><dd><p>
-Recorded traces are serialized to JSON and saved to <code>/path/to/target-dir/rtic-traces</code>, which means <code>target/rtic-traces</code> by default.
-This directory can be overridden via the <code>--trace-dir</code> option.
-The same option  is used to replay traces located in a non-default location.
+By default, recorded traces are serialized to JSON and saved to <code>$(cargo metadata | jq .target_directory)/rtic-traces/</code>.
+It is recommended to override this location with the <code>--trace-dir</code> option.
+The same option is used to replay traces located in a non-default location.
 </p>
 
 <p>
@@ -844,26 +884,25 @@ The same option  is used to replay traces located in a non-default location.
 </div>
 </div>
 
-<div id="outline-container-orgcdb179d" class="outline-2">
-<h2 id="orgcdb179d"><span class="section-number-2">8</span> Roadmap</h2>
+<div id="outline-container-org2ba5c17" class="outline-2">
+<h2 id="org2ba5c17"><span class="section-number-2">8</span> Roadmap</h2>
 <div class="outline-text-2" id="text-8">
 <p>
-The milestone for a minimum viable product (MVP) has been reached as of <span class="timestamp-wrapper"><span class="timestamp">&lt;2021-07-06 Tue&gt;</span></span>!
+A minimum viable product (MVP), v0.1.0, has been reached.
 This MVP only traces hardware tasks; software task tracing is not yet fully implemented.
 </p>
 
 <p>
-<a href="https://github.com/rtic-scope/cargo-rtic-scope/milestone/2">Another milestone has been defined for a first stable release</a>.
+<a href="https://github.com/rtic-scope/cargo-rtic-scope/milestone/2">Another milestone has been defined for a next release (v0.2.0)</a>.
 </p>
 </div>
 </div>
 
-<div id="outline-container-orgc79ca6f" class="outline-2">
-<h2 id="orgc79ca6f"><span class="section-number-2">9</span> Known issues (of note)</h2>
+<div id="outline-container-org56141a5" class="outline-2">
+<h2 id="org56141a5"><span class="section-number-2">9</span> Known issues (of note)</h2>
 <div class="outline-text-2" id="text-9">
 <ul class="org-ul">
 <li>Usage of an STLink probe source is not stable. (<a href="https://github.com/rtic-scope/cargo-rtic-scope/issues/18">#18</a>)</li>
-<li>Arguments to cargo are not forwarded. (<a href="https://github.com/rtic-scope/cargo-rtic-scope/issues/9">#9</a>)</li>
 </ul>
 
 <p>
@@ -872,8 +911,8 @@ This MVP only traces hardware tasks; software task tracing is not yet fully impl
 </div>
 </div>
 
-<div id="outline-container-org11b152c" class="outline-2">
-<h2 id="org11b152c"><span class="section-number-2">10</span> Publications</h2>
+<div id="outline-container-orgbcca00a" class="outline-2">
+<h2 id="orgbcca00a"><span class="section-number-2">10</span> Publications</h2>
 <div class="outline-text-2" id="text-10">
 <p>
 TBA
@@ -881,8 +920,8 @@ TBA
 </div>
 </div>
 
-<div id="outline-container-org55797e3" class="outline-2">
-<h2 id="org55797e3"><span class="section-number-2">11</span> License</h2>
+<div id="outline-container-org4ac7dc2" class="outline-2">
+<h2 id="org4ac7dc2"><span class="section-number-2">11</span> License</h2>
 <div class="outline-text-2" id="text-11">
 <p>
 For non-commercial purposes, RTIC Scope is licensed under both the MIT Licence and the Apache License (Version 2.0).
@@ -895,11 +934,11 @@ RTIC Scope is maintained in cooperation with Grepit AB and Luleå Technical Univ
 </div>
 </div>
 
-<div id="outline-container-orgdb876a4" class="outline-2">
-<h2 id="orgdb876a4"><span class="section-number-2">12</span> Contact, bug reports and contributions</h2>
+<div id="outline-container-org1f02d3c" class="outline-2">
+<h2 id="org1f02d3c"><span class="section-number-2">12</span> Contact, bug reports and contributions</h2>
 <div class="outline-text-2" id="text-12">
 <p>
-Bug reports and contributions are welcome. Please file it under the <a href="#org5995860">relevant repository</a>.
+Bug reports and contributions are welcome. Please file it under the <a href="#orgdeb3d18">relevant repository</a>.
 </p>
 
 <p>
@@ -922,7 +961,7 @@ The overhead will be <code>u8</code> unless your application has more than 256 s
 </div></div>
 <div id="postamble" class="status">
 <p class="author">Author: Viktor Vilhelm Sonesten</p>
-<p class="date">Created: 2021-07-24 Sat 00:12</p>
+<p class="date">Created: 2021-07-30 Fri 09:32</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
